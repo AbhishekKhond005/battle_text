@@ -1,37 +1,38 @@
-// App State
+// ============================================================
+// APP STATE
+// ============================================================
 let gameState = null;
-let targetScore = 50;
-let difficultyLevel = 3;
+let selectedBotName = null;
+let selectedLevelIndex = null;
 let timerInterval = null;
 let timeRemaining = 60.0;
-const TURN_DURATION = 60.0; // 60 seconds per round
-let selectedCpuName = 'Adam';
+const TURN_DURATION = 60.0;
 
-// DOM Elements
-const startScreen = document.getElementById('start-screen');
+// ============================================================
+// SCREEN REFERENCES
+// ============================================================
+const homeScreen = document.getElementById('home-screen');
+const botScreen = document.getElementById('bot-screen');
 const gameScreen = document.getElementById('game-screen');
 const gameOverScreen = document.getElementById('game-over-screen');
 
-// Start Settings
-const scoreBtns = document.querySelectorAll('.score-options:not(#cpu-options) .score-btn');
-const difficultySlider = document.getElementById('difficulty-slider');
-const difficultyValue = document.getElementById('difficulty-value');
-const startBtn = document.getElementById('start-btn');
+// Home
+const playBtn = document.getElementById('play-btn');
+
+// Bot Selection
+const botCardsEl = document.getElementById('bot-cards');
+const backToHomeBtn = document.getElementById('back-to-home-btn');
 
 // Game HUD
 const humanScoreEl = document.getElementById('human-score');
 const cpuScoreEl = document.getElementById('cpu-score');
 const humanScoreBar = document.getElementById('human-score-bar');
 const cpuScoreBar = document.getElementById('cpu-score-bar');
-const cpuLevelDisplay = document.getElementById('cpu-level-display');
 const chatArea = document.getElementById('chat-area');
 const typingIndicator = document.getElementById('typing-indicator');
-
-// CPU Options
-const cpuOptionsBtns = document.querySelectorAll('#cpu-options .score-btn');
 const cpuNameDisplay = document.getElementById('cpu-name-display');
 const typingCpuName = document.getElementById('typing-cpu-name');
-const finalCpuName = document.getElementById('final-cpu-name');
+const gimmickBanner = document.getElementById('gimmick-banner');
 
 // Input Area
 const requiredLetterEl = document.getElementById('required-letter');
@@ -40,78 +41,162 @@ const submitBtn = document.getElementById('submit-btn');
 const timerBar = document.getElementById('timer-bar');
 const errorMsg = document.getElementById('error-msg');
 
-// Game Over Data
+// Game Over
 const gameOverTitle = document.getElementById('game-over-title');
 const finalHumanScore = document.getElementById('final-human-score');
 const finalCpuScore = document.getElementById('final-cpu-score');
+const finalCpuName = document.getElementById('final-cpu-name');
 const restartBtn = document.getElementById('restart-btn');
 const homeBtn = document.getElementById('home-btn');
 
-// --- Initialization ---
+// ============================================================
+// SCREEN NAVIGATION
+// ============================================================
 
-scoreBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-        scoreBtns.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        targetScore = parseInt(btn.dataset.score);
-    });
+function showScreen(screenEl) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+    screenEl.classList.remove('hidden');
+}
+
+playBtn.addEventListener('click', () => showScreen(botScreen));
+backToHomeBtn.addEventListener('click', () => showScreen(homeScreen));
+restartBtn.addEventListener('click', () => showScreen(botScreen));
+
+// Quit — immediate, no dialog
+homeBtn.addEventListener('click', () => {
+    clearInterval(timerInterval);
+    gameState = null;
+    showScreen(botScreen); // Return to bot selection, not home
 });
 
-cpuOptionsBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-        cpuOptionsBtns.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        selectedCpuName = btn.dataset.cpu;
-    });
-});
+// ============================================================
+// BOT LOADING & RENDERING
+// ============================================================
 
-difficultySlider.addEventListener('input', (e) => {
-    difficultyLevel = e.target.value;
-    difficultyValue.textContent = difficultyLevel;
-});
-
-startBtn.addEventListener('click', async () => {
-    startBtn.disabled = true;
-    startBtn.textContent = 'STARTING...';
+async function loadBots() {
     try {
-        const response = await fetch(`/api/game/start?difficulty=${difficultyLevel}&targetScore=${targetScore}&cpuName=${selectedCpuName}`, { method: 'POST' });
-        gameState = await response.json();
+        const res = await fetch('/api/game/bots');
+        const botsMap = await res.json();
+        renderBotCards(botsMap);
+        playBtn.disabled = false;
+        playBtn.textContent = 'PLAY';
+    } catch (e) {
+        botCardsEl.innerHTML = '<div class="bot-loading">Failed to load opponents.</div>';
+        console.error('Failed to load bots:', e);
+    }
+}
 
-        cpuLevelDisplay.textContent = difficultyLevel;
+function renderBotCards(botsMap) {
+    botCardsEl.innerHTML = '';
+    for (const [botName, bot] of Object.entries(botsMap)) {
+        const card = document.createElement('div');
+        card.className = 'bot-card';
+        card.dataset.bot = botName;
+
+        const header = document.createElement('div');
+        header.className = 'bot-card-header';
+        header.innerHTML = `
+            <div class="bot-avatar">${bot.avatar}</div>
+            <div class="bot-info">
+                <div class="bot-name">${bot.name}</div>
+                <div class="bot-desc">${bot.description}</div>
+            </div>
+            <div class="bot-expand-icon">▼</div>
+        `;
+        header.addEventListener('click', () => toggleBotCard(card));
+
+        const levelsEl = document.createElement('div');
+        levelsEl.className = 'bot-levels';
+
+        bot.levels.forEach((level, idx) => {
+            const btn = document.createElement('button');
+            btn.className = 'level-btn';
+            btn.dataset.bot = botName;
+            btn.dataset.level = idx;
+
+            const gimmickLabel = level.gimmick
+                ? `<span class="level-gimmick-badge">✨ ${formatGimmick(level.gimmick)}</span>`
+                : '';
+
+            btn.innerHTML = `
+                <div>
+                    <div class="level-name">Lv ${idx + 1} — ${level.name}</div>
+                    <div class="level-desc">${level.description} &nbsp;·&nbsp; 🎯 ${level.targetScore} pts</div>
+                </div>
+                ${gimmickLabel}
+            `;
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                selectLevel(botName, idx, btn);
+            });
+            levelsEl.appendChild(btn);
+        });
+
+        card.appendChild(header);
+        card.appendChild(levelsEl);
+        botCardsEl.appendChild(card);
+    }
+}
+
+function formatGimmick(gimmick) {
+    if (!gimmick) return '';
+    if (gimmick.startsWith('FIXED_LETTER:')) return `Letter: ${gimmick.split(':')[1].toUpperCase()}`;
+    if (gimmick.startsWith('MIN_WORD_LENGTH:')) return `Min ${gimmick.split(':')[1]} letters`;
+    if (gimmick === 'DOUBLE_SCORE') return '2× CPU Score';
+    return gimmick;
+}
+
+function toggleBotCard(card) {
+    const isOpen = card.classList.contains('open');
+    document.querySelectorAll('.bot-card').forEach(c => c.classList.remove('open'));
+    if (!isOpen) card.classList.add('open');
+}
+
+function selectLevel(botName, levelIndex, btn) {
+    document.querySelectorAll('.level-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.bot-card').forEach(c => c.classList.remove('selected'));
+
+    btn.classList.add('active');
+    btn.closest('.bot-card').classList.add('selected');
+
+    selectedBotName = botName;
+    selectedLevelIndex = levelIndex;
+
+    // Start the game immediately when a level is selected
+    startGame();
+}
+
+// ============================================================
+// GAME START
+// ============================================================
+
+async function startGame() {
+    if (!selectedBotName || selectedLevelIndex === null) return;
+
+    try {
+        const res = await fetch(
+            `/api/game/start?botName=${encodeURIComponent(selectedBotName)}&levelIndex=${selectedLevelIndex}`,
+            { method: 'POST' }
+        );
+        gameState = await res.json();
+
         resetGameUI();
         updateGameUI(gameState);
-
         showScreen(gameScreen);
 
-        // Instead of enabling input, we let the CPU take the first turn
         simulateCpuTurn();
     } catch (e) {
         console.error('Error starting game:', e);
         alert('Failed to start game. Is the server running?');
-    } finally {
-        startBtn.disabled = false;
-        startBtn.textContent = 'START BATTLE';
     }
-});
+}
 
-restartBtn.addEventListener('click', () => {
-    showScreen(startScreen);
-});
-
-homeBtn.addEventListener('click', () => {
-    if (confirm('Quit the current game and return to home?')) {
-        clearInterval(timerInterval);
-        gameState = null;
-        showScreen(startScreen);
-    }
-});
-
-// --- Gameplay ---
+// ============================================================
+// GAMEPLAY
+// ============================================================
 
 wordInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-        handleSubmitMove();
-    }
+    if (e.key === 'Enter') handleSubmitMove();
 });
 
 submitBtn.addEventListener('click', handleSubmitMove);
@@ -121,13 +206,12 @@ wordInput.addEventListener('input', () => {
     wordInput.value = val;
     errorMsg.textContent = '';
 
-    // Auto color required letter if user types it
     if (gameState && val.length > 0) {
-        if (val.charAt(0) === gameState.requiredStartingLetter) {
-            requiredLetterEl.style.backgroundColor = '#06d6a0'; // green validation
+        if (val.charAt(0) === gameState.requiredStartingLetter.toLowerCase()) {
+            requiredLetterEl.style.backgroundColor = '#06d6a0';
             requiredLetterEl.style.color = '#fff';
         } else {
-            requiredLetterEl.style.backgroundColor = '#ef476f'; // red error
+            requiredLetterEl.style.backgroundColor = '#ef476f';
             requiredLetterEl.style.color = '#fff';
         }
     } else {
@@ -144,52 +228,50 @@ async function handleSubmitMove() {
     errorMsg.textContent = '';
 
     try {
-        const response = await fetch(`/api/game/playHuman?gameId=${gameState.id}&word=${word}`, { method: 'POST' });
-        const result = await response.json();
+        const res = await fetch(
+            `/api/game/playHuman?gameId=${gameState.id}&word=${encodeURIComponent(word)}`,
+            { method: 'POST' }
+        );
+        const turnResult = await res.json();
 
-        if (!result.valid) {
-            errorMsg.textContent = result.message;
+        if (!turnResult.valid) {
+            errorMsg.textContent = turnResult.message;
             enableInput();
             return;
         }
 
-        // Valid human move
-        appendChatBubble('human', result.humanWord, result.humanWordScore);
-        gameState = result.gameState;
+        appendChatBubble('human', turnResult.humanWord, turnResult.humanWordScore);
+        gameState = turnResult.gameState;
+        wordInput.value = '';
         updateGameUI(gameState);
 
         if (gameState.gameOver) {
             handleGameOver();
-            return;
+        } else {
+            simulateCpuTurn();
         }
-
-        // Trigger the CPU turn asynchronously
-        simulateCpuTurn();
-
     } catch (e) {
-        console.error('Error playing turn:', e);
+        console.error('Error submitting move:', e);
         errorMsg.textContent = 'Network error.';
         enableInput();
     }
 }
 
 async function simulateCpuTurn() {
-    // Show typing
     typingIndicator.classList.remove('hidden');
     chatArea.scrollTop = chatArea.scrollHeight;
 
-    // CPU thinks for 0.5s to 1.5s based on level
     const delay = Math.random() * 1000 + 500;
 
     try {
-        const response = await fetch(`/api/game/playCpu?gameId=${gameState.id}`, { method: 'POST' });
-        const turnResult = await response.json();
+        const res = await fetch(`/api/game/playCpu?gameId=${gameState.id}`, { method: 'POST' });
+        const turnResult = await res.json();
 
         setTimeout(() => {
             typingIndicator.classList.add('hidden');
 
-            if (turnResult.cpuWord === "SKIPPED!") {
-                appendChatBubble('cpu', "SKIPPED!", 0);
+            if (turnResult.cpuWord === 'SKIPPED!') {
+                appendChatBubble('cpu', 'SKIPPED!', 0);
             } else {
                 appendChatBubble('cpu', turnResult.cpuWord, turnResult.cpuWordScore);
             }
@@ -211,7 +293,9 @@ async function simulateCpuTurn() {
     }
 }
 
-// --- Game Loop / Timer ---
+// ============================================================
+// TIMER
+// ============================================================
 
 function startTimer() {
     timeRemaining = TURN_DURATION;
@@ -221,7 +305,6 @@ function startTimer() {
     timerInterval = setInterval(() => {
         timeRemaining -= 0.1;
         updateTimerBar();
-
         if (timeRemaining <= 0) {
             clearInterval(timerInterval);
             timeRemaining = 0;
@@ -234,13 +317,12 @@ function startTimer() {
 function stopTimer() {
     clearInterval(timerInterval);
     timerBar.style.width = '100%';
-    timerBar.style.backgroundColor = '#1a1a2e'; // hide instantly when stopped
+    timerBar.style.backgroundColor = '#1a1a2e';
 }
 
 function updateTimerBar() {
     const percent = Math.max(0, (timeRemaining / TURN_DURATION) * 100);
     timerBar.style.width = `${percent}%`;
-
     if (percent < 50 && percent >= 25) {
         timerBar.className = 'timer-bar warning';
     } else if (percent < 25) {
@@ -253,11 +335,10 @@ function updateTimerBar() {
 async function handleTimeout() {
     disableInput();
     try {
-        const response = await fetch(`/api/game/timeout?gameId=${gameState.id}`, { method: 'POST' });
-        gameState = await response.json();
+        const res = await fetch(`/api/game/timeout?gameId=${gameState.id}`, { method: 'POST' });
+        gameState = await res.json();
 
-        // Human forfeited turn
-        appendChatBubble('human', "SKIPPED!", 0);
+        appendChatBubble('human', 'SKIPPED!', 0);
         updateGameUI(gameState);
 
         if (gameState.gameOver) {
@@ -271,7 +352,9 @@ async function handleTimeout() {
     }
 }
 
-// --- UI Updates ---
+// ============================================================
+// UI HELPERS
+// ============================================================
 
 function disableInput() {
     stopTimer();
@@ -282,36 +365,26 @@ function disableInput() {
 function enableInput() {
     wordInput.disabled = false;
     submitBtn.disabled = false;
-    wordInput.value = '';
     wordInput.focus();
+    startTimer();
     requiredLetterEl.style.backgroundColor = '#fff';
     requiredLetterEl.style.color = '#1a1a2e';
-    startTimer();
 }
 
 function updateGameUI(state) {
-    if (!state) return;
-
     humanScoreEl.textContent = state.humanScore;
     cpuScoreEl.textContent = state.cpuScore;
 
-    const humanPct = Math.min(100, (state.humanScore / state.targetScore) * 100);
-    const cpuPct = Math.min(100, (state.cpuScore / state.targetScore) * 100);
-
-    humanScoreBar.style.width = `${humanPct}%`;
-    cpuScoreBar.style.width = `${cpuPct}%`;
+    const pct = (score) => Math.min(100, (score / state.targetScore) * 100);
+    humanScoreBar.style.width = `${pct(state.humanScore)}%`;
+    cpuScoreBar.style.width = `${pct(state.cpuScore)}%`;
 
     if (state.requiredStartingLetter) {
         requiredLetterEl.textContent = state.requiredStartingLetter.toUpperCase();
-    } else {
-        requiredLetterEl.textContent = '?';
     }
 }
 
 function appendChatBubble(player, word, score) {
-    const chatPlace = document.querySelector('.chat-placeholder');
-    if (chatPlace) chatPlace.remove();
-
     const container = document.createElement('div');
     container.className = `chat-bubble-container ${player}`;
 
@@ -320,7 +393,6 @@ function appendChatBubble(player, word, score) {
 
     const wordSpan = document.createElement('span');
     wordSpan.className = 'word-text';
-    // Highlight the required letter dynamically
     const firstLetter = word.charAt(0).toUpperCase();
     const rest = word.substring(1);
     wordSpan.innerHTML = `<u>${firstLetter}</u>${rest}`;
@@ -339,21 +411,28 @@ function appendChatBubble(player, word, score) {
 
     container.appendChild(bubble);
     chatArea.appendChild(container);
-
-    // Scroll to bottom
     chatArea.scrollTop = chatArea.scrollHeight;
 }
 
 function resetGameUI() {
-    cpuNameDisplay.textContent = gameState.cpuName;
-    typingCpuName.textContent = gameState.cpuName;
-    finalCpuName.textContent = gameState.cpuName;
-    chatArea.innerHTML = `<div class="chat-placeholder">Game Started! ${gameState.cpuName} is making the first move...</div>`;
+    const cpuName = gameState.cpuName || 'CPU';
+    cpuNameDisplay.textContent = cpuName;
+    typingCpuName.textContent = cpuName;
+    finalCpuName.textContent = cpuName;
+
+    chatArea.innerHTML = `<div class="chat-placeholder">Game Started! ${cpuName} is making the first move...</div>`;
     humanScoreBar.style.width = '0%';
     cpuScoreBar.style.width = '0%';
     errorMsg.textContent = '';
     requiredLetterEl.style.backgroundColor = '#fff';
     requiredLetterEl.style.color = '#1a1a2e';
+
+    if (gameState.activeGimmick) {
+        gimmickBanner.textContent = `✨ ${formatGimmick(gameState.activeGimmick)}`;
+        gimmickBanner.classList.remove('hidden');
+    } else {
+        gimmickBanner.classList.add('hidden');
+    }
 }
 
 function handleGameOver() {
@@ -364,25 +443,23 @@ function handleGameOver() {
 
     if (gameState.winner === 'HUMAN') {
         gameOverTitle.textContent = 'YOU WIN!';
-        gameOverTitle.style.color = '#06d6a0'; // win green
+        gameOverTitle.style.color = '#06d6a0';
     } else {
         gameOverTitle.textContent = 'YOU LOSE...';
-        gameOverTitle.style.color = '#ef476f'; // lose red
+        gameOverTitle.style.color = '#ef476f';
     }
 
-    const gameOverSubtitle = document.getElementById('game-over-subtitle');
+    const subtitle = document.getElementById('game-over-subtitle');
     if (gameState.humanScore >= gameState.targetScore || gameState.cpuScore >= gameState.targetScore) {
-        gameOverSubtitle.textContent = 'Target score reached.';
+        subtitle.textContent = 'Target score reached.';
     } else {
-        gameOverSubtitle.textContent = 'Time is up! Turn forfeited.';
+        subtitle.textContent = 'Turn forfeited.';
     }
 
-    setTimeout(() => {
-        showScreen(gameOverScreen);
-    }, 1500); // Wait bit before showing game over screen so user sees final state
+    setTimeout(() => showScreen(gameOverScreen), 1500);
 }
 
-function showScreen(screenEl) {
-    document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
-    screenEl.classList.remove('hidden');
-}
+// ============================================================
+// BOOT
+// ============================================================
+loadBots();

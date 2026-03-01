@@ -1,1 +1,8 @@
+com/battletext/service/GameService.class
+com/battletext/service/BotRegistry.class
+com/battletext/Application.class
+com/battletext/model/BotConfig.class
+com/battletext/model/BotLevel.class
 com/battletext/controller/GameController.class
+com/battletext/model/TurnResult.class
+com/battletext/model/GameState.class

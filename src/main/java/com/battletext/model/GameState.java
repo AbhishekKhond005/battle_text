@@ -21,6 +21,8 @@ public class GameState {
 
     private boolean isGameOver;
     private String winner; // "HUMAN" or "CPU"
+    private String activeGimmick; // null or e.g. "FIXED_LETTER:G"
+    private String activeGimmickDescription; // human-readable description for UI
 
     public void addUsedWord(String word) {
         usedWords.add(word);
