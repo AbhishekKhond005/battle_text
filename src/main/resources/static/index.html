@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Battle Text</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div id="app">
+        <!-- Start Screen -->
+        <div id="start-screen" class="screen current">
+            <div class="logo-container">
+                <h1>BATTLE TEXT</h1>
+                <p>Word guessing duel</p>
+            </div>
+
+            <div class="settings-card">
+                <h2>Game Setup</h2>
+                <div class="setting-group">
+                    <label>Target Score</label>
+                    <div class="score-options">
+                        <button class="score-btn active" data-score="50">50</button>
+                        <button class="score-btn" data-score="100">100</button>
+                        <button class="score-btn" data-score="150">150</button>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <label>Opponent Name</label>
+                    <div class="score-options" id="cpu-options">
+                        <button class="score-btn active" data-cpu="Adam">Adam</button>
+                        <button class="score-btn" data-cpu="Eve">Eve</button>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <label>CPU Difficulty (1 = Easy, 8 = Hard)</label>
+                    <input type="range" id="difficulty-slider" min="1" max="8" value="3">
+                    <div class="difficulty-display">Level <span id="difficulty-value">3</span></div>
+                </div>
+
+                <button id="start-btn" class="primary-btn">START BATTLE</button>
+            </div>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game-screen" class="screen hidden">
+            <!-- Top Nav -->
+            <div class="top-nav">
+                <button id="home-btn" class="nav-btn" title="Quit Game">🚪 Quit</button>
+            </div>
+            <!-- Header HUD -->
+            <div class="game-header">
+                <div class="player-hud human">
+                    <div class="hud-avatar">👤 YOU</div>
+                    <div class="hud-score" id="human-score">0</div>
+                    <div class="hud-bar-container">
+                        <div class="hud-bar" id="human-score-bar"></div>
+                    </div>
+                </div>
+                <div class="vs-text">VS</div>
+                <div class="player-hud cpu">
+                    <div class="hud-avatar">🤖 <span id="cpu-name-display">CPU</span> (Lv <span
+                            id="cpu-level-display">3</span>)</div>
+                    <div class="hud-score" id="cpu-score">0</div>
+                    <div class="hud-bar-container">
+                        <div class="hud-bar" id="cpu-score-bar"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat / Play Area -->
+            <div class="chat-area" id="chat-area">
+                <div class="chat-placeholder">Game Started! Wait for CPU or make your first move.</div>
+            </div>
+
+            <!-- CPU Typing Indicator -->
+            <div class="typing-indicator hidden" id="typing-indicator">
+                <span id="typing-cpu-name">CPU</span> is typing<span>.</span><span>.</span><span>.</span>
+            </div>
+
+            <!-- Bottom Input Area -->
+            <div class="input-area">
+                <div class="timer-container" id="timer-container">
+                    <div class="timer-bar" id="timer-bar"></div>
+                </div>
+
+                <div class="word-input-container">
+                    <div class="required-letter" id="required-letter">?</div>
+                    <input type="text" id="word-input" autocomplete="off" placeholder="Type your word here..." disabled>
+                    <button id="submit-btn" disabled>SEND</button>
+                </div>
+                <div class="error-msg" id="error-msg"></div>
+            </div>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="game-over-screen" class="screen hidden">
+            <h1 id="game-over-title">YOU WIN!</h1>
+            <p id="game-over-subtitle">Target score reached.</p>
+            <div class="final-scores">
+                <div class="score-box">
+                    <div>YOU</div>
+                    <div id="final-human-score" class="score-value">0</div>
+                </div>
+                <div class="score-box">
+                    <div id="final-cpu-name">CPU</div>
+                    <div id="final-cpu-score" class="score-value">0</div>
+                </div>
+            </div>
+            <button id="restart-btn" class="primary-btn">PLAY AGAIN</button>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
