@@ -101,9 +101,12 @@ function renderBotCards(botsMap) {
                 <div class="bot-name">${bot.name}</div>
                 <div class="bot-desc">${bot.description}</div>
             </div>
-            <div class="bot-expand-icon">▼</div>
+            <button class="bot-toggle-btn" title="Click to select level">▼</button>
         `;
-        header.addEventListener('click', () => toggleBotCard(card));
+        header.querySelector('.bot-toggle-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleBotCard(card);
+        });
 
         const levelsEl = document.createElement('div');
         levelsEl.className = 'bot-levels';
