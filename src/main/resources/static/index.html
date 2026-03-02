@@ -10,10 +10,123 @@
 </head>
 
 <body>
+    <div class="global-account-container">
+        <button id="account-btn" class="account-btn">
+            <span id="account-icon-display" class="account-icon guest">👤</span>
+            <span id="account-name-display">Log In</span>
+        </button>
+        <!-- Account Dropdown -->
+        <div id="account-dropdown" class="account-dropdown">
+            <button id="profile-link-btn" class="account-dropdown-btn">Profile</button>
+            <div class="account-dropdown-header">
+                <span id="dropdown-icon" class="account-icon"></span>
+                <div class="account-dropdown-info">
+                    <div id="dropdown-username" class="account-dropdown-username">Player</div>
+                    <div id="dropdown-stats" class="account-dropdown-stats">0 games played</div>
+                </div>
+            </div>
+            <div class="account-dropdown-actions">
+                <button id="logout-btn" class="account-dropdown-btn">Logout</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== PROFILE SCREEN ========== -->
+    <div id="profile-screen" class="screen hidden">
+        <div class="profile-container">
+            <div class="profile-header">
+                <button class="nav-btn back-btn" id="profile-back-btn">← Back</button>
+                <h2>Your Profile</h2>
+            </div>
+            
+            <div class="profile-content">
+                <div class="profile-avatar-section">
+                    <div class="profile-avatar-container">
+                        <img id="profile-picture" class="profile-picture" src="" alt="Profile">
+                        <div id="profile-fallback" class="profile-fallback">
+                            <span id="profile-icon-display"></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="profile-field">
+                    <label>Username</label>
+                    <div class="profile-username-row">
+                        <input type="text" id="profile-username-input" placeholder="USERNAME" maxlength="12">
+                        <button id="profile-username-edit-btn" class="profile-edit-btn">Edit</button>
+                    </div>
+                    <button id="profile-username-save-btn" class="profile-save-btn hidden">Save</button>
+                </div>
+                
+                <div class="profile-field">
+                    <label>Email</label>
+                    <div id="profile-email" class="profile-email"></div>
+                </div>
+                
+                <div class="profile-field">
+                    <label>Games Played</label>
+                    <div id="profile-games" class="profile-games">0</div>
+                </div>
+                
+                <div class="profile-error" id="profile-error"></div>
+                
+                <button id="profile-signout-btn" class="profile-signout-btn">Sign Out</button>
+            </div>
+        </div>
+    </div>
+
     <div id="app">
 
+        <!-- ========== LOGIN SCREEN ========== -->
+        <div id="login-screen" class="screen hidden">
+            <button class="nav-btn login-back-btn" id="login-back-btn"
+                style="position: absolute; top: 15px; left: 15px;">← Back</button>
+            <div class="login-container">
+                <div id="login-step-username">
+                    <h2>WELCOME!</h2>
+                    <p>What should we call you?</p>
+                    <div class="setup-field">
+                        <input type="text" id="login-username-input" placeholder="USERNAME" maxlength="12">
+                    </div>
+                    <button id="login-next-btn" class="primary-btn">Next</button>
+                </div>
+                <div id="login-step-google" class="login-step-hidden">
+                    <h2>READY!</h2>
+                    <p>Now sign in to save your progress</p>
+                    <button class="google-login-btn" id="google-login-click-btn">
+                        <img src="https://www.google.com/favicon.ico" alt="G">
+                        CONTINUE WITH GOOGLE
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== ACCOUNT SETUP SCREEN ========== -->
+        <div id="setup-screen" class="screen hidden">
+            <div class="setup-container">
+                <h2>Create Profile</h2>
+                <p class="subtitle">Choose your in-game identity</p>
+                <div class="setup-field">
+                    <label>Username</label>
+                    <input type="text" id="setup-username" placeholder="YOURNAME" maxlength="12">
+                </div>
+                <div class="setup-field">
+                    <label>Choose Icon</label>
+                    <div class="icon-selection">
+                        <div class="icon-option robot selected" data-icon="robot">🤖</div>
+                        <div class="icon-option ghost" data-icon="ghost">👻</div>
+                        <div class="icon-option star" data-icon="star">⭐</div>
+                        <div class="icon-option bolt" data-icon="bolt">⚡</div>
+                        <div class="icon-option skull" data-icon="skull">💀</div>
+                    </div>
+                </div>
+                <div class="setup-error" id="setup-error">Please enter a username</div>
+                <button id="setup-submit-btn" class="primary-btn">Let's Play!</button>
+            </div>
+        </div>
+
         <!-- ========== HOME SCREEN ========== -->
-        <div id="home-screen" class="screen current">
+        <div id="home-screen" class="screen hidden">
             <div class="home-center">
                 <div class="logo-container">
                     <h1>BATTLE TEXT</h1>
@@ -25,15 +138,16 @@
 
         <!-- ========== BOT SELECTION SCREEN ========== -->
         <div id="bot-screen" class="screen hidden">
-            <div class="bot-screen-header">
-                <button class="nav-btn back-btn" id="back-to-home-btn">← Back</button>
-                <h2>Choose Your Opponent</h2>
-                <div></div><!-- spacer for flex alignment -->
-            </div>
+            <div class="bot-center">
+                <div class="bot-screen-header">
+                    <button class="nav-btn back-btn" id="back-to-home-btn">← Back</button>
+                    <h2>Choose Your Opponent</h2>
+                </div>
 
-            <div class="bot-screen-body">
-                <div id="bot-cards" class="bot-cards">
-                    <div class="bot-loading">Loading opponents…</div>
+                <div class="bot-screen-body">
+                    <div id="bot-cards" class="bot-cards">
+                        <div class="bot-loading">Loading opponents…</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -48,7 +162,7 @@
             <!-- Header HUD -->
             <div class="game-header">
                 <div class="player-hud human">
-                    <div class="hud-avatar">👤 YOU</div>
+                    <div class="hud-avatar">👤 <span id="human-name-display">YOU</span></div>
                     <div class="hud-score" id="human-score">0</div>
                     <div class="hud-bar-container">
                         <div class="hud-bar" id="human-score-bar"></div>
@@ -91,11 +205,13 @@
 
         <!-- ========== GAME OVER SCREEN ========== -->
         <div id="game-over-screen" class="screen hidden">
-            <h1 id="game-over-title">YOU WIN!</h1>
-            <p id="game-over-subtitle">Target score reached.</p>
+            <div class="game-over-header">
+                <h1 id="game-over-title">YOU WIN!</h1>
+                <p id="game-over-subtitle">Target score reached.</p>
+            </div>
             <div class="final-scores">
                 <div class="score-box">
-                    <div>YOU</div>
+                    <div id="final-human-name">YOU</div>
                     <div id="final-human-score" class="score-value">0</div>
                 </div>
                 <div class="score-box">

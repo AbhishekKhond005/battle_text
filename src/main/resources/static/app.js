@@ -8,6 +8,13 @@ let timerInterval = null;
 let timeRemaining = 60.0;
 const TURN_DURATION = 60.0;
 
+// Auth State
+let currentUser = null;
+let userEmail = null;
+let userPicture = null;
+let needsSetup = false;
+let selectedIcon = 'robot';
+
 // ============================================================
 // SCREEN REFERENCES
 // ============================================================
@@ -15,16 +22,36 @@ const homeScreen = document.getElementById('home-screen');
 const botScreen = document.getElementById('bot-screen');
 const gameScreen = document.getElementById('game-screen');
 const gameOverScreen = document.getElementById('game-over-screen');
+const loginScreen = document.getElementById('login-screen');
+const setupScreen = document.getElementById('setup-screen');
 
 // Home
 const playBtn = document.getElementById('play-btn');
 
+// Profile Screen
+const profileScreen = document.getElementById('profile-screen');
+const profileBackBtn = document.getElementById('profile-back-btn');
+const profilePicture = document.getElementById('profile-picture');
+const profileFallback = document.getElementById('profile-fallback');
+const profileIconDisplay = document.getElementById('profile-icon-display');
+const profileUsernameInput = document.getElementById('profile-username-input');
+const profileUsernameEditBtn = document.getElementById('profile-username-edit-btn');
+const profileUsernameSaveBtn = document.getElementById('profile-username-save-btn');
+const profileEmail = document.getElementById('profile-email');
+const profileGames = document.getElementById('profile-games');
+const profileError = document.getElementById('profile-error');
+const profileSignoutBtn = document.getElementById('profile-signout-btn');
+const profileLinkBtn = document.getElementById('profile-link-btn');
+
 // Bot Selection
+const loginBackBtn = document.getElementById('login-back-btn');
 const botCardsEl = document.getElementById('bot-cards');
 const backToHomeBtn = document.getElementById('back-to-home-btn');
 
 // Game HUD
 const humanScoreEl = document.getElementById('human-score');
+const humanNameDisplay = document.getElementById('human-name-display');
+const finalHumanName = document.getElementById('final-human-name');
 const cpuScoreEl = document.getElementById('cpu-score');
 const humanScoreBar = document.getElementById('human-score-bar');
 const cpuScoreBar = document.getElementById('cpu-score-bar');
@@ -49,6 +76,28 @@ const finalCpuName = document.getElementById('final-cpu-name');
 const restartBtn = document.getElementById('restart-btn');
 const homeBtn = document.getElementById('home-btn');
 
+// Account UI
+const accountBtn = document.getElementById('account-btn');
+const accountDropdown = document.getElementById('account-dropdown');
+const accountIconDisplay = document.getElementById('account-icon-display');
+const accountNameDisplay = document.getElementById('account-name-display');
+const dropdownIcon = document.getElementById('dropdown-icon');
+const dropdownUsername = document.getElementById('dropdown-username');
+const dropdownStats = document.getElementById('dropdown-stats');
+const logoutBtn = document.getElementById('logout-btn');
+
+// Login Multi-step
+const loginStepUsername = document.getElementById('login-step-username');
+const loginStepGoogle = document.getElementById('login-step-google');
+const loginUsernameInput = document.getElementById('login-username-input');
+const loginNextBtn = document.getElementById('login-next-btn');
+
+// Setup UI
+const setupUsername = document.getElementById('setup-username');
+const setupSubmitBtn = document.getElementById('setup-submit-btn');
+const setupError = document.getElementById('setup-error');
+const iconOptions = document.querySelectorAll('.icon-option');
+
 // ============================================================
 // SCREEN NAVIGATION
 // ============================================================
@@ -61,6 +110,300 @@ function showScreen(screenEl) {
 playBtn.addEventListener('click', () => showScreen(botScreen));
 backToHomeBtn.addEventListener('click', () => showScreen(homeScreen));
 restartBtn.addEventListener('click', () => showScreen(botScreen));
+loginBackBtn.addEventListener('click', () => showScreen(homeScreen));
+profileBackBtn.addEventListener('click', () => {
+    showScreen(homeScreen);
+});
+
+// ============================================================
+// AUTH FUNCTIONS
+// ============================================================
+
+const ICON_EMOJIS = {
+    robot: '🤖',
+    ghost: '👻',
+    star: '⭐',
+    bolt: '⚡',
+    skull: '💀'
+};
+
+async function checkAuth() {
+    try {
+        const res = await fetch('/api/auth/user');
+        const data = await res.json();
+
+        if (!data.loggedIn) {
+            currentUser = null;
+            userEmail = null;
+            userPicture = null;
+            updateAccountUI();
+            return false;
+        }
+
+        if (data.needsSetup) {
+            needsSetup = true;
+            currentUser = null;
+            userEmail = data.email || null;
+            userPicture = null;
+
+            // Check if we have a pending username from the new login flow
+            const pendingUsername = localStorage.getItem('pending_username');
+            if (pendingUsername) {
+                console.log('Automating setup with pending username:', pendingUsername);
+                await completeSetup(pendingUsername, 'robot');
+                localStorage.removeItem('pending_username');
+                return true;
+            }
+
+            showScreen(setupScreen);
+            return false;
+        }
+
+        currentUser = {
+            username: data.username,
+            icon: data.icon,
+            gamesPlayed: data.gamesPlayed
+        };
+        userEmail = data.email || null;
+        userPicture = data.picture || null;
+        needsSetup = false;
+        updateAccountUI();
+        return true;
+    } catch (e) {
+        console.error('Auth check failed:', e);
+        currentUser = null;
+        userEmail = null;
+        userPicture = null;
+        updateAccountUI();
+        return false;
+    }
+}
+
+function updateAccountUI() {
+    const iconEmoji = currentUser ? (ICON_EMOJIS[currentUser.icon] || '🤖') : '👤';
+    const displayUsername = currentUser ? currentUser.username : 'Sign In';
+    const iconClass = currentUser ? currentUser.icon : 'guest';
+
+    // Global account button
+    accountIconDisplay.textContent = iconEmoji;
+    accountIconDisplay.className = `account-icon ${iconClass}`;
+    accountNameDisplay.textContent = displayUsername.substring(0, 15);
+    accountNameDisplay.style.display = 'block';
+
+    if (currentUser) {
+        // Dropdown info
+        dropdownIcon.textContent = iconEmoji;
+        dropdownIcon.className = `account-icon ${iconClass}`;
+        dropdownUsername.textContent = currentUser.username;
+        dropdownStats.textContent = `${currentUser.gamesPlayed} games played`;
+
+        // Update in-game and game-over labels
+        if (humanNameDisplay) humanNameDisplay.textContent = currentUser.username;
+        if (finalHumanName) finalHumanName.textContent = currentUser.username;
+    } else {
+        if (humanNameDisplay) humanNameDisplay.textContent = 'YOU';
+        if (finalHumanName) finalHumanName.textContent = 'YOU';
+    }
+
+    // Always show account button
+    accountBtn.style.display = 'flex';
+}
+
+// Account button click handlers
+function toggleDropdown(dropdown) {
+    const isShown = dropdown.classList.contains('show');
+    document.querySelectorAll('.account-dropdown').forEach(d => d.classList.remove('show'));
+    if (!isShown) dropdown.classList.add('show');
+}
+
+accountBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (currentUser) {
+        toggleDropdown(accountDropdown);
+    } else {
+        // Reset login steps
+        loginStepUsername.classList.remove('login-step-hidden');
+        loginStepGoogle.classList.add('login-step-hidden');
+        loginUsernameInput.value = '';
+        showScreen(loginScreen);
+    }
+});
+
+// Profile link button in dropdown
+if (profileLinkBtn) {
+    profileLinkBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        accountDropdown.classList.remove('show');
+        showProfileScreen();
+    });
+}
+
+loginNextBtn.addEventListener('click', () => {
+    const val = loginUsernameInput.value.trim();
+    if (!val) {
+        alert('Please enter a username');
+        return;
+    }
+    localStorage.setItem('pending_username', val);
+    loginStepUsername.classList.add('login-step-hidden');
+    loginStepGoogle.classList.remove('login-step-hidden');
+});
+
+const googleLoginClickBtn = document.getElementById('google-login-click-btn');
+if (googleLoginClickBtn) {
+    googleLoginClickBtn.addEventListener('click', () => {
+        console.log('Redirecting to Google OAuth...');
+        window.location.href = '/oauth2/authorization/google';
+    });
+}
+
+document.addEventListener('click', () => {
+    document.querySelectorAll('.account-dropdown').forEach(d => d.classList.remove('show'));
+});
+
+// Logout handlers
+function handleLogout() {
+    window.location.href = '/logout';
+}
+
+logoutBtn.addEventListener('click', handleLogout);
+
+// Profile Screen Functions
+function showProfileScreen() {
+    if (!currentUser) return;
+    
+    profileUsernameInput.value = currentUser.username;
+    profileUsernameInput.disabled = true;
+    profileUsernameEditBtn.classList.remove('hidden');
+    profileUsernameSaveBtn.classList.add('hidden');
+    profileError.classList.remove('show');
+    
+    // Always show the icon (no Google profile picture)
+    profilePicture.classList.add('hidden');
+    profileFallback.classList.remove('hidden');
+    const iconEmoji = ICON_EMOJIS[currentUser.icon] || '🤖';
+    profileIconDisplay.textContent = iconEmoji;
+    
+    // Display email
+    profileEmail.textContent = userEmail || 'No email';
+    
+    // Display games played
+    profileGames.textContent = currentUser.gamesPlayed;
+    
+    showScreen(profileScreen);
+}
+
+// Edit username
+profileUsernameEditBtn.addEventListener('click', () => {
+    profileUsernameInput.disabled = false;
+    profileUsernameInput.focus();
+    profileUsernameEditBtn.classList.add('hidden');
+    profileUsernameSaveBtn.classList.remove('hidden');
+});
+
+// Save username
+profileUsernameSaveBtn.addEventListener('click', async () => {
+    const newUsername = profileUsernameInput.value.trim();
+    if (!newUsername) {
+        profileError.textContent = 'Username cannot be empty';
+        profileError.classList.add('show');
+        return;
+    }
+    
+    try {
+        const res = await fetch('/api/auth/update-profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: newUsername })
+        });
+        
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error || 'Update failed');
+        }
+        
+        const data = await res.json();
+        currentUser.username = data.username;
+        updateAccountUI();
+        
+        profileUsernameInput.disabled = true;
+        profileUsernameEditBtn.classList.remove('hidden');
+        profileUsernameSaveBtn.classList.add('hidden');
+        profileError.classList.remove('show');
+    } catch (e) {
+        profileError.textContent = e.message || 'Failed to update username';
+        profileError.classList.add('show');
+    }
+});
+
+// Enter key to save username
+profileUsernameInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        profileUsernameSaveBtn.click();
+    }
+});
+
+// Sign out
+profileSignoutBtn.addEventListener('click', () => {
+    window.location.href = '/logout';
+});
+
+// Icon selection
+iconOptions.forEach(option => {
+    option.addEventListener('click', () => {
+        iconOptions.forEach(o => o.classList.remove('selected'));
+        option.classList.add('selected');
+        selectedIcon = option.dataset.icon;
+    });
+});
+
+// Helper to complete setup
+async function completeSetup(username, icon) {
+    try {
+        const res = await fetch('/api/auth/setup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, icon })
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error || 'Setup failed');
+        }
+
+        const data = await res.json();
+        currentUser = {
+            username: data.username,
+            icon: data.icon,
+            gamesPlayed: data.gamesPlayed
+        };
+        needsSetup = false;
+        updateAccountUI();
+    } catch (e) {
+        console.error('Setup failed:', e);
+        throw e;
+    }
+}
+
+// Setup form submission
+setupSubmitBtn.addEventListener('click', async () => {
+    const username = setupUsername.value.trim();
+    if (!username) {
+        setupError.textContent = 'Please enter a username';
+        setupError.classList.add('show');
+        return;
+    }
+
+    setupError.classList.remove('show');
+
+    try {
+        await completeSetup(username, selectedIcon);
+        showScreen(homeScreen);
+    } catch (e) {
+        setupError.textContent = e.message || 'Network error. Try again.';
+        setupError.classList.add('show');
+    }
+});
 
 // Quit — immediate, no dialog
 homeBtn.addEventListener('click', () => {
@@ -156,6 +499,12 @@ function toggleBotCard(card) {
 }
 
 function selectLevel(botName, levelIndex, btn) {
+    // Guests can play too! Only force setup if they ARE logged in but haven't chosen an icon.
+    if (needsSetup) {
+        showScreen(setupScreen);
+        return;
+    }
+
     document.querySelectorAll('.level-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.bot-card').forEach(c => c.classList.remove('selected'));
 
@@ -388,6 +737,9 @@ function updateGameUI(state) {
 }
 
 function appendChatBubble(player, word, score) {
+    if (chatArea.querySelector('.chat-placeholder')) {
+        chatArea.innerHTML = '';
+    }
     const container = document.createElement('div');
     container.className = `chat-bubble-container ${player}`;
 
@@ -423,7 +775,7 @@ function resetGameUI() {
     typingCpuName.textContent = cpuName;
     finalCpuName.textContent = cpuName;
 
-    chatArea.innerHTML = `<div class="chat-placeholder">Game Started! ${cpuName} is making the first move...</div>`;
+    chatArea.innerHTML = `<div class="chat-placeholder">Game started! ${cpuName} is making the first move...</div>`;
     humanScoreBar.style.width = '0%';
     cpuScoreBar.style.width = '0%';
     errorMsg.textContent = '';
@@ -441,14 +793,27 @@ function resetGameUI() {
 function handleGameOver() {
     disableInput();
 
+    // Increment games played
+    if (currentUser) {
+        fetch('/api/auth/increment-games', { method: 'POST' })
+            .then(res => res.json())
+            .then(data => {
+                if (data.gamesPlayed !== undefined) {
+                    currentUser.gamesPlayed = data.gamesPlayed;
+                    updateAccountUI();
+                }
+            })
+            .catch(console.error);
+    }
+
     finalHumanScore.textContent = gameState.humanScore;
     finalCpuScore.textContent = gameState.cpuScore;
 
     if (gameState.winner === 'HUMAN') {
-        gameOverTitle.textContent = 'YOU WIN!';
+        gameOverTitle.textContent = `${currentUser ? currentUser.username : 'YOU'} WIN!`;
         gameOverTitle.style.color = '#06d6a0';
     } else {
-        gameOverTitle.textContent = 'YOU LOSE...';
+        gameOverTitle.textContent = `${currentUser ? currentUser.username : 'YOU'} LOSE...`;
         gameOverTitle.style.color = '#ef476f';
     }
 
@@ -465,4 +830,15 @@ function handleGameOver() {
 // ============================================================
 // BOOT
 // ============================================================
-loadBots();
+async function init() {
+    // Show home screen immediately
+    showScreen(homeScreen);
+
+    // Check auth in background
+    await checkAuth();
+
+    // Load bots regardless
+    loadBots();
+}
+
+init();
