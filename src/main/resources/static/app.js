@@ -42,6 +42,8 @@ const profileGames = document.getElementById('profile-games');
 const profileError = document.getElementById('profile-error');
 const profileSignoutBtn = document.getElementById('profile-signout-btn');
 const profileLinkBtn = document.getElementById('profile-link-btn');
+const profileIconOptions = document.querySelectorAll('.profile-icon-option');
+const profileIconSaveBtn = document.getElementById('profile-icon-save-btn');
 
 // Bot Selection
 const loginBackBtn = document.getElementById('login-back-btn');
@@ -86,11 +88,8 @@ const dropdownUsername = document.getElementById('dropdown-username');
 const dropdownStats = document.getElementById('dropdown-stats');
 const logoutBtn = document.getElementById('logout-btn');
 
-// Login Multi-step
-const loginStepUsername = document.getElementById('login-step-username');
-const loginStepGoogle = document.getElementById('login-step-google');
+// Login
 const loginUsernameInput = document.getElementById('login-username-input');
-const loginNextBtn = document.getElementById('login-next-btn');
 
 // Setup UI
 const setupUsername = document.getElementById('setup-username');
@@ -221,9 +220,7 @@ accountBtn.addEventListener('click', (e) => {
     if (currentUser) {
         toggleDropdown(accountDropdown);
     } else {
-        // Reset login steps
-        loginStepUsername.classList.remove('login-step-hidden');
-        loginStepGoogle.classList.add('login-step-hidden');
+        // Reset login
         loginUsernameInput.value = '';
         showScreen(loginScreen);
     }
@@ -238,21 +235,27 @@ if (profileLinkBtn) {
     });
 }
 
-loginNextBtn.addEventListener('click', () => {
-    const val = loginUsernameInput.value.trim();
-    if (!val) {
-        alert('Please enter a username');
-        return;
-    }
-    localStorage.setItem('pending_username', val);
-    loginStepUsername.classList.add('login-step-hidden');
-    loginStepGoogle.classList.remove('login-step-hidden');
-});
+// Sign up with Google - requires username first
+const googleSignupBtn = document.getElementById('google-signup-btn');
+if (googleSignupBtn) {
+    googleSignupBtn.addEventListener('click', () => {
+        const username = loginUsernameInput.value.trim();
+        if (!username) {
+            alert('Please enter a username first');
+            return;
+        }
+        localStorage.setItem('pending_username', username);
+        console.log('Signing up with Google...');
+        window.location.href = '/oauth2/authorization/google';
+    });
+}
 
-const googleLoginClickBtn = document.getElementById('google-login-click-btn');
-if (googleLoginClickBtn) {
-    googleLoginClickBtn.addEventListener('click', () => {
-        console.log('Redirecting to Google OAuth...');
+// Sign in with Google - for existing users (no username needed)
+const googleSigninBtn = document.getElementById('google-signin-btn');
+if (googleSigninBtn) {
+    googleSigninBtn.addEventListener('click', () => {
+        localStorage.removeItem('pending_username');
+        console.log('Signing in with Google...');
         window.location.href = '/oauth2/authorization/google';
     });
 }
@@ -283,6 +286,15 @@ function showProfileScreen() {
     profileFallback.classList.remove('hidden');
     const iconEmoji = ICON_EMOJIS[currentUser.icon] || '🤖';
     profileIconDisplay.textContent = iconEmoji;
+    
+    // Update icon selection
+    profileIconOptions.forEach(opt => {
+        opt.classList.remove('selected');
+        if (opt.dataset.icon === currentUser.icon) {
+            opt.classList.add('selected');
+        }
+    });
+    profileIconSaveBtn.classList.add('hidden');
     
     // Display email
     profileEmail.textContent = userEmail || 'No email';
@@ -346,6 +358,49 @@ profileUsernameInput.addEventListener('keypress', (e) => {
 // Sign out
 profileSignoutBtn.addEventListener('click', () => {
     window.location.href = '/logout';
+});
+
+// Profile icon selection
+profileIconOptions.forEach(option => {
+    option.addEventListener('click', () => {
+        profileIconOptions.forEach(o => o.classList.remove('selected'));
+        option.classList.add('selected');
+        profileIconSaveBtn.classList.remove('hidden');
+    });
+});
+
+// Save icon
+profileIconSaveBtn.addEventListener('click', async () => {
+    const selectedOption = document.querySelector('.profile-icon-option.selected');
+    if (!selectedOption) return;
+    
+    const newIcon = selectedOption.dataset.icon;
+    
+    try {
+        const res = await fetch('/api/auth/update-profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ icon: newIcon })
+        });
+        
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error || 'Update failed');
+        }
+        
+        const data = await res.json();
+        currentUser.icon = data.icon;
+        updateAccountUI();
+        
+        // Update display
+        const iconEmoji = ICON_EMOJIS[currentUser.icon] || '🤖';
+        profileIconDisplay.textContent = iconEmoji;
+        
+        profileIconSaveBtn.classList.add('hidden');
+    } catch (e) {
+        profileError.textContent = e.message || 'Failed to update icon';
+        profileError.classList.add('show');
+    }
 });
 
 // Icon selection

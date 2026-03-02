@@ -1006,13 +1006,14 @@ body {
 }
 
 .login-container {
-    background: #fff;
+    background: #FA8072;
     border: var(--brutal-border);
     box-shadow: var(--brutal-shadow);
     padding: 2rem;
     width: 100%;
     max-width: 400px;
     text-align: center;
+    transform: rotate(-1deg);
 }
 
 .login-container h2 {
@@ -1020,12 +1021,14 @@ body {
     font-weight: 800;
     text-transform: uppercase;
     margin-bottom: 1rem;
+    color: #fff;
+    text-shadow: 2px 2px 0 var(--text-main);
 }
 
 .login-container p {
     font-size: 1rem;
     font-weight: 600;
-    color: #666;
+    color: #333;
     margin-bottom: 1.5rem;
 }
 
@@ -1056,6 +1059,19 @@ body {
 .google-login-btn img {
     width: 24px;
     height: 24px;
+}
+
+.login-options {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 1rem;
+}
+
+.google-login-btn.secondary {
+    background: #FFF5C2;
+    font-size: 1rem;
+    padding: 15px;
 }
 
 /* ========== ACCOUNT SETUP SCREEN ========== */
@@ -1205,7 +1221,7 @@ body {
     box-shadow: var(--brutal-shadow);
     width: 100%;
     max-width: 450px;
-    transform: rotate(1deg);
+    transform: rotate(-1deg);
 }
 
 .profile-header {
@@ -1294,6 +1310,65 @@ body {
     text-transform: uppercase;
     margin-bottom: 8px;
     color: #666;
+}
+
+.profile-icon-selection {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 10px;
+}
+
+.profile-icon-option {
+    width: 50px;
+    height: 50px;
+    border: 3px solid var(--text-main);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    transition: all 0.1s;
+    background: var(--bg-color);
+}
+
+.profile-icon-option:hover {
+    transform: scale(1.1);
+}
+
+.profile-icon-option.selected {
+    box-shadow: 0 0 0 3px var(--accent-color);
+}
+
+.profile-icon-option.robot {
+    background: var(--primary-color);
+    color: #fff;
+    border-radius: 8px;
+}
+
+.profile-icon-option.ghost {
+    background: var(--secondary-color);
+    color: #fff;
+    border-radius: 50%;
+}
+
+.profile-icon-option.star {
+    background: var(--accent-color);
+    color: var(--text-main);
+    clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+    border: none;
+}
+
+.profile-icon-option.bolt {
+    background: var(--cpu-color);
+    color: var(--text-main);
+    border-radius: 4px;
+}
+
+.profile-icon-option.skull {
+    background: var(--text-main);
+    color: #fff;
+    border-radius: 50%;
 }
 
 .profile-username-row {

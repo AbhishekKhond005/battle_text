@@ -59,6 +59,18 @@
                 </div>
                 
                 <div class="profile-field">
+                    <label>Choose Icon</label>
+                    <div class="profile-icon-selection">
+                        <div class="profile-icon-option robot selected" data-icon="robot">🤖</div>
+                        <div class="profile-icon-option ghost" data-icon="ghost">👻</div>
+                        <div class="profile-icon-option star" data-icon="star">⭐</div>
+                        <div class="profile-icon-option bolt" data-icon="bolt">⚡</div>
+                        <div class="profile-icon-option skull" data-icon="skull">💀</div>
+                    </div>
+                    <button id="profile-icon-save-btn" class="profile-save-btn hidden">Save Icon</button>
+                </div>
+                
+                <div class="profile-field">
                     <label>Email</label>
                     <div id="profile-email" class="profile-email"></div>
                 </div>
@@ -82,20 +94,19 @@
             <button class="nav-btn login-back-btn" id="login-back-btn"
                 style="position: absolute; top: 15px; left: 15px;">← Back</button>
             <div class="login-container">
-                <div id="login-step-username">
-                    <h2>WELCOME!</h2>
-                    <p>What should we call you?</p>
-                    <div class="setup-field">
-                        <input type="text" id="login-username-input" placeholder="USERNAME" maxlength="12">
-                    </div>
-                    <button id="login-next-btn" class="primary-btn">Next</button>
+                <h2>WELCOME!</h2>
+                <p>Sign in to save your progress</p>
+                <div class="setup-field">
+                    <input type="text" id="login-username-input" placeholder="USERNAME" maxlength="12">
                 </div>
-                <div id="login-step-google" class="login-step-hidden">
-                    <h2>READY!</h2>
-                    <p>Now sign in to save your progress</p>
-                    <button class="google-login-btn" id="google-login-click-btn">
+                <div class="login-options">
+                    <button class="google-login-btn" id="google-signup-btn">
                         <img src="https://www.google.com/favicon.ico" alt="G">
-                        CONTINUE WITH GOOGLE
+                        SIGN UP WITH GOOGLE
+                    </button>
+                    <button class="google-login-btn secondary" id="google-signin-btn">
+                        <img src="https://www.google.com/favicon.ico" alt="G">
+                        ALREADY HAVE AN ACCOUNT?
                     </button>
                 </div>
             </div>
