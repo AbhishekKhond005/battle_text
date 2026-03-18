@@ -4,12 +4,17 @@ import com.battletext.model.BotConfig;
 import com.battletext.model.BotLevel;
 import com.battletext.model.GameState;
 import com.battletext.model.TurnResult;
+import com.battletext.model.User;
+import com.battletext.repository.UserRepository;
 import com.battletext.service.BotRegistry;
 import com.battletext.service.GameService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -23,21 +28,58 @@ public class GameController {
     @Autowired
     private BotRegistry botRegistry;
 
+    @Autowired
+    private UserRepository userRepository;
+
     private final Map<String, GameState> activeGames = new ConcurrentHashMap<>();
 
     /**
-     * Returns all available bots and their levels — used by the UI to build the
-     * selection screen.
+     * Returns all available bots and their levels with unlock status for the logged-in user.
      */
     @GetMapping("/bots")
-    public Map<String, BotConfig> getBots() {
-        return botRegistry.getBots();
+    public Map<String, Object> getBots(@AuthenticationPrincipal OAuth2User principal) {
+        Map<String, BotConfig> bots = botRegistry.getBots();
+        Set<Integer> unlockedAdam = Set.of(0);
+        Set<Integer> unlockedEve = Set.of(0);
+        
+        if (principal != null) {
+            String googleId = principal.getAttribute("sub");
+            User user = userRepository.findOrCreateByGoogleId(
+                googleId,
+                principal.getAttribute("email"),
+                principal.getAttribute("name"),
+                principal.getAttribute("picture")
+            );
+            unlockedAdam = user.getUnlockedLevelIndices("Adam");
+            unlockedEve = user.getUnlockedLevelIndices("Eve");
+        }
+        
+        return Map.of(
+            "bots", bots,
+            "unlockedAdam", unlockedAdam,
+            "unlockedEve", unlockedEve
+        );
     }
 
     @PostMapping("/start")
-    public GameState startGame(
+    public Object startGame(
             @RequestParam(defaultValue = "Adam") String botName,
-            @RequestParam(defaultValue = "0") int levelIndex) {
+            @RequestParam(defaultValue = "0") int levelIndex,
+            @AuthenticationPrincipal OAuth2User principal) {
+
+        if (principal != null) {
+            String googleId = principal.getAttribute("sub");
+            User user = userRepository.findOrCreateByGoogleId(
+                googleId,
+                principal.getAttribute("email"),
+                principal.getAttribute("name"),
+                principal.getAttribute("picture")
+            );
+            
+            if (!user.isLevelUnlocked(botName, levelIndex)) {
+                return Map.of("error", "Level is locked. Win the previous level first!");
+            }
+        }
 
         BotConfig bot = botRegistry.getBot(botName);
         if (bot == null) {
@@ -49,6 +91,8 @@ public class GameController {
 
         GameState gameState = new GameState();
         gameState.setId(UUID.randomUUID().toString());
+        gameState.setBotName(botName);
+        gameState.setLevelIndex(safeIndex);
         gameState.setDifficultyLevel(level.getDifficultyValue());
         gameState.setTargetScore(level.getTargetScore()); // from level itself
         gameState.setHumanScore(0);
@@ -72,7 +116,10 @@ public class GameController {
     }
 
     @PostMapping("/playHuman")
-    public TurnResult playHuman(@RequestParam String gameId, @RequestParam String word) {
+    public TurnResult playHuman(
+            @RequestParam String gameId, 
+            @RequestParam String word,
+            @AuthenticationPrincipal OAuth2User principal) {
         GameState gameState = activeGames.get(gameId);
         if (gameState == null) {
             TurnResult result = new TurnResult();
@@ -80,7 +127,9 @@ public class GameController {
             result.setMessage("Game not found.");
             return result;
         }
-        return gameService.processHumanTurn(gameState, word);
+        
+        String userGoogleId = (principal != null) ? principal.getAttribute("sub") : null;
+        return gameService.processHumanTurn(gameState, word, userGoogleId);
     }
 
     @PostMapping("/playCpu")

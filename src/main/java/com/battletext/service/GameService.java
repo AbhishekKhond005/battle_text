@@ -1,8 +1,12 @@
 package com.battletext.service;
 
+import com.battletext.model.BotConfig;
 import com.battletext.model.GameState;
 import com.battletext.model.TurnResult;
+import com.battletext.model.User;
+import com.battletext.repository.UserRepository;
 import jakarta.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.BufferedReader;
@@ -14,9 +18,16 @@ import java.util.stream.Collectors;
 
 @Service
 public class GameService {
-    // Map of Character (starting letter) to list of words starting with that letter
     private final Map<Character, List<String>> dictionary = new HashMap<>();
     private final Random random = new Random();
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private BotRegistry botRegistry;
+
+    private static final int UNIQUE_WORD_BONUS = 5;
 
     @PostConstruct
     public void init() {
@@ -90,6 +101,10 @@ public class GameService {
     // -------------------------------------------------------------------------
 
     public TurnResult processHumanTurn(GameState gameState, String humanWord) {
+        return processHumanTurn(gameState, humanWord, null);
+    }
+
+    public TurnResult processHumanTurn(GameState gameState, String humanWord, String userGoogleId) {
         TurnResult result = new TurnResult();
         humanWord = humanWord.toLowerCase().trim();
         String gimmick = gameState.getActiveGimmick();
@@ -129,8 +144,25 @@ public class GameService {
             return result;
         }
 
-        // 3. Human turn succeeds
-        int humanScore = humanWord.length();
+        // 3. Check for unique word and calculate bonus
+        boolean isUniqueWord = false;
+        int uniqueWordBonus = 0;
+
+        if (userGoogleId != null) {
+            Optional<User> userOpt = userRepository.findByGoogleId(userGoogleId);
+            if (userOpt.isPresent()) {
+                User user = userOpt.get();
+                if (!user.getUniqueWords().contains(humanWord)) {
+                    isUniqueWord = true;
+                    uniqueWordBonus = UNIQUE_WORD_BONUS;
+                    user.getUniqueWords().add(humanWord);
+                    userRepository.save(user);
+                }
+            }
+        }
+
+        // 4. Human turn succeeds
+        int humanScore = humanWord.length() + uniqueWordBonus;
         gameState.setHumanScore(gameState.getHumanScore() + humanScore);
         gameState.addUsedWord(humanWord);
         gameState.setLastWordPlayed(humanWord);
@@ -146,10 +178,13 @@ public class GameService {
         result.setValid(true);
         result.setHumanWord(humanWord);
         result.setHumanWordScore(humanScore);
+        result.setUniqueWord(isUniqueWord);
+        result.setUniqueWordBonus(uniqueWordBonus);
 
         if (gameState.getHumanScore() >= gameState.getTargetScore()) {
             gameState.setGameOver(true);
             gameState.setWinner("HUMAN");
+            unlockNextLevel(gameState, userGoogleId);
         }
 
         result.setGameState(gameState);
@@ -213,9 +248,9 @@ public class GameService {
         String gimmick = gameState.getActiveGimmick();
         int difficulty = gameState.getDifficultyLevel(); // 1 to 8
 
-        // Skip chance for low-difficulty bots
-        if (difficulty <= 3) {
-            int skipChance = (4 - difficulty) * 5; // Level 1: 15%, 2: 10%, 3: 5%
+        // Skip chance for low-difficulty bots only (remove for better gameplay)
+        if (difficulty == 1) {
+            int skipChance = 5; // Level 1: 5% skip chance
             if (random.nextInt(100) < skipChance) {
                 return null;
             }
@@ -260,11 +295,47 @@ public class GameService {
             return validTargets.get(random.nextInt(validTargets.size()));
         }
 
-        // Fallback: high difficulty picks long words, low picks short
-        if (difficulty >= 5) {
-            return available.get(random.nextInt(Math.min(10, available.size())));
-        } else {
-            return available.get(available.size() - 1 - random.nextInt(Math.min(10, available.size())));
+        // Fallback: always use available words if no valid targets
+        if (!available.isEmpty()) {
+            if (difficulty >= 5) {
+                return available.get(random.nextInt(Math.min(10, available.size())));
+            } else {
+                return available.get(available.size() - 1 - random.nextInt(Math.min(10, available.size())));
+            }
+        }
+        
+        return null;
+    }
+
+private void unlockNextLevel(GameState gameState, String userGoogleId) {
+        String botName = gameState.getBotName();
+        int currentLevel = gameState.getLevelIndex();
+        int nextLevel = currentLevel + 1;
+        
+        BotConfig bot = botRegistry.getBot(botName);
+        if (bot == null || nextLevel >= bot.getLevels().size()) {
+            return;
+        }
+        
+        // Determine Google ID to use – if none provided, fall back to "default"
+        String googleId = userGoogleId != null ? userGoogleId : "default";
+        Optional<User> userOpt = userRepository.findByGoogleId(googleId);
+        
+        // If user not found, create a minimal placeholder user
+        userOpt.ifPresent(user -> {
+            user.unlockLevel(botName, nextLevel);
+            userRepository.save(user);
+        });
+        if (!userOpt.isPresent()) {
+            User defaultUser = new User();
+            defaultUser.setGoogleId(googleId);
+            // Minimal setup for placeholder – in a real app these would be configured
+            defaultUser.setUsername("DefaultUser");
+            defaultUser.setEmail("");
+            defaultUser.setIcon("");
+            // Unlock the level for the placeholder user and persist
+            defaultUser.unlockLevel(botName, nextLevel);
+            userRepository.save(defaultUser);
         }
     }
 }

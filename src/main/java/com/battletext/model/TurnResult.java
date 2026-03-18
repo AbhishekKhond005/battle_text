@@ -9,6 +9,8 @@ public class TurnResult {
     
     private String humanWord;
     private int humanWordScore;
+    private boolean isUniqueWord;
+    private int uniqueWordBonus;
     
     private String cpuWord;
     private int cpuWordScore;

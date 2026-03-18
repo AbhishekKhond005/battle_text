@@ -15,10 +15,14 @@ public class SecurityConfig {
         public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
                 http
                                 .authorizeHttpRequests(auth -> auth
-                                                .requestMatchers("/", "/index.html", "/static/**", "/api/auth/user",
-                                                                "/api/game/bots",
-                                                                "/api/game/playCpu", "/api/game/playHuman",
-                                                                "/api/game/timeout", "/*.js", "/*.css", "/*.ico")
+                                                .requestMatchers(
+                                                        "/", "/index.html", 
+                                                        "/static/**", "/static/*.js", "/static/*.css",
+                                                        "/api/auth/user",
+                                                        "/api/game/bots", "/api/game/start",
+                                                        "/api/game/playCpu", "/api/game/playHuman",
+                                                        "/api/game/timeout", 
+                                                        "/*.js", "/*.css", "/*.ico")
                                                 .permitAll()
                                                 .anyRequest().authenticated())
                                 .oauth2Login(oauth2 -> oauth2

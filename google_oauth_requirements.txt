@@ -1,0 +1,66 @@
+Google OAuth Authentication – Requirements
+
+Goal: Implement authentication using Google OAuth that supports both new
+user registration and existing user login.
+
+1.  Authentication Method
+
+-   Users must be able to sign in using their Google account.
+-   Authentication should use Google OAuth.
+-   The system should retrieve the user’s Google email and basic profile
+    information.
+
+2.  User Identification Logic
+
+-   The Google email address must be used as the unique identifier for a
+    user.
+-   When a user signs in with Google:
+    -   Check if the email already exists in the database.
+
+If the email exists: - Treat the user as an existing user. - Log them
+into their account. - No additional information should be requested.
+
+If the email does not exist: - Treat the user as a new user. - Ask the
+user to choose a username. - Store the following information: -
+username - gmail address - authentication provider = google
+
+3.  Username Rules
+
+-   Usernames must be unique.
+-   If a username already exists, prompt the user to choose another.
+-   Usernames should be stored separately from the email.
+
+4.  Session Handling
+
+-   After successful authentication:
+    -   Create a user session or authentication token.
+    -   The user should remain logged in until logout or session expiry.
+
+5.  Database Structure Each user record should contain at minimum:
+
+-   username
+-   email (gmail)
+-   auth_provider (google)
+-   created_at
+
+6.  Login Flow Summary Step 1 — User clicks “Continue with Google” Step
+    2 — Google authentication completes Step 3 — System checks email
+
+-   If email exists → login user
+-   If email does not exist → prompt for username
+
+Step 4 — Create user account Store username + gmail.
+
+Step 5 — Log user in
+
+7.  Error Handling
+
+-   Handle failed Google authentication.
+-   Handle duplicate usernames.
+-   Prevent duplicate accounts with the same email.
+
+8.  Optional (Recommended)
+
+-   Allow users to log out.
+-   Allow future login with Google without entering username again.
+-   Store Google user ID if available.

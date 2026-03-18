@@ -27,13 +27,17 @@ public class AuthController {
 
             String googleId = principal.getAttribute("sub");
             if (googleId == null) {
-                // Not a google user or missing ID? logout
                 return ResponseEntity.ok(Map.of("loggedIn", false, "error", "Invalid session"));
             }
 
+            String email = principal.getAttribute("email");
+
             Optional<User> userOpt = userRepository.findByGoogleId(googleId);
             
-            String email = principal.getAttribute("email");
+            if (userOpt.isEmpty() && email != null) {
+                userOpt = userRepository.findByEmail(email);
+            }
+            
             String picture = principal.getAttribute("picture");
 
             if (userOpt.isEmpty()) {
@@ -51,6 +55,8 @@ public class AuthController {
                     "username", user.getUsername(),
                     "icon", user.getIcon(),
                     "gamesPlayed", user.getGamesPlayed(),
+                    "gamesWon", user.getGamesWon(),
+                    "uniqueWordsCount", user.getUniqueWords().size(),
                     "email", email != null ? email : "",
                     "picture", picture != null ? picture : ""));
         } catch (Exception e) {
@@ -67,6 +73,7 @@ public class AuthController {
         }
 
         String googleId = principal.getAttribute("sub");
+        String email = principal.getAttribute("email");
         String username = body.get("username");
         String icon = body.get("icon");
 
@@ -79,18 +86,17 @@ public class AuthController {
         }
 
         Optional<User> existingUser = userRepository.findByGoogleId(googleId);
+        
+        if (existingUser.isEmpty() && email != null) {
+            existingUser = userRepository.findByEmail(email);
+        }
+        
         User user;
         if (existingUser.isPresent()) {
             user = existingUser.get();
-            // Only update username if it's currently empty/null (new user)
-            if (user.getUsername() == null || user.getUsername().trim().isEmpty()) {
-                user.setUsername(username);
-            }
-            if (icon != null) {
-                user.setIcon(icon);
-            }
+            user.setUsername(username);
+            user.setIcon(icon);
         } else {
-            String email = principal.getAttribute("email");
             user = new User(googleId, email, username, icon);
         }
 
@@ -98,7 +104,9 @@ public class AuthController {
         return ResponseEntity.ok(Map.of(
                 "username", user.getUsername(),
                 "icon", user.getIcon(),
-                "gamesPlayed", user.getGamesPlayed()));
+                "gamesPlayed", user.getGamesPlayed(),
+                "gamesWon", user.getGamesWon(),
+                "uniqueWordsCount", user.getUniqueWords().size()));
     }
 
     @PostMapping("/update-profile")
@@ -127,11 +135,14 @@ public class AuthController {
         return ResponseEntity.ok(Map.of(
                 "username", user.getUsername(),
                 "icon", user.getIcon(),
-                "gamesPlayed", user.getGamesPlayed()));
+                "gamesPlayed", user.getGamesPlayed(),
+                "gamesWon", user.getGamesWon(),
+                "uniqueWordsCount", user.getUniqueWords().size()));
     }
 
     @PostMapping("/increment-games")
-    public ResponseEntity<?> incrementGamesPlayed(@AuthenticationPrincipal OAuth2User principal) {
+    public ResponseEntity<?> incrementGamesPlayed(@AuthenticationPrincipal OAuth2User principal,
+            @RequestParam(defaultValue = "false") boolean won) {
         if (principal == null) {
             return ResponseEntity.ok(Map.of("loggedIn", false));
         }
@@ -142,11 +153,17 @@ public class AuthController {
         if (userOpt.isPresent()) {
             User user = userOpt.get();
             user.setGamesPlayed(user.getGamesPlayed() + 1);
+            if (won) {
+                user.setGamesWon(user.getGamesWon() + 1);
+            }
             userRepository.save(user);
-            return ResponseEntity.ok(Map.of("gamesPlayed", user.getGamesPlayed()));
+            return ResponseEntity.ok(Map.of(
+                    "gamesPlayed", user.getGamesPlayed(),
+                    "gamesWon", user.getGamesWon(),
+                    "uniqueWordsCount", user.getUniqueWords().size()));
         }
 
-        return ResponseEntity.ok(Map.of("gamesPlayed", 0));
+        return ResponseEntity.ok(Map.of("gamesPlayed", 0, "gamesWon", 0));
     }
 
     @PostMapping("/logout")

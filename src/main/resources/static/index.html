@@ -52,7 +52,7 @@
                 <div class="profile-field">
                     <label>Username</label>
                     <div class="profile-username-row">
-                        <input type="text" id="profile-username-input" placeholder="USERNAME" maxlength="12">
+                        <input type="text" id="profile-username-input" placeholder="USERNAME" maxlength="12" autocapitalize="off" autocomplete="off" spellcheck="false" style="text-transform: none !important;">
                         <button id="profile-username-edit-btn" class="profile-edit-btn">Edit</button>
                     </div>
                     <button id="profile-username-save-btn" class="profile-save-btn hidden">Save</button>
@@ -75,9 +75,20 @@
                     <div id="profile-email" class="profile-email"></div>
                 </div>
                 
+                <div class="profile-stats-row">
+                    <div class="profile-stat-box">
+                        <label>Games Played</label>
+                        <div id="profile-games" class="profile-stat-value">0</div>
+                    </div>
+                    <div class="profile-stat-box">
+                        <label>Games Won</label>
+                        <div id="profile-won" class="profile-stat-value">0</div>
+                    </div>
+                </div>
+                
                 <div class="profile-field">
-                    <label>Games Played</label>
-                    <div id="profile-games" class="profile-games">0</div>
+                    <label>Unique Words Used</label>
+                    <div id="profile-unique-words" class="profile-unique-words">0</div>
                 </div>
                 
                 <div class="profile-error" id="profile-error"></div>
@@ -96,8 +107,8 @@
             <div class="login-container">
                 <h2>WELCOME!</h2>
                 <p>Sign in to save your progress</p>
-                <div class="setup-field">
-                    <input type="text" id="login-username-input" placeholder="USERNAME" maxlength="12">
+                    <div class="setup-field">
+                    <input type="text" id="login-username-input" placeholder="USERNAME" maxlength="12" autocomplete="off" autocapitalize="off" spellcheck="false" style="text-transform: none !important;">
                 </div>
                 <div class="login-options">
                     <button class="google-login-btn" id="google-signup-btn">
@@ -119,7 +130,7 @@
                 <p class="subtitle">Choose your in-game identity</p>
                 <div class="setup-field">
                     <label>Username</label>
-                    <input type="text" id="setup-username" placeholder="YOURNAME" maxlength="12">
+                    <input type="text" id="setup-username" placeholder="YOURNAME" maxlength="12" autocomplete="off" autocapitalize="off" spellcheck="false" style="text-transform: none !important;">
                 </div>
                 <div class="setup-field">
                     <label>Choose Icon</label>
@@ -235,7 +246,7 @@
 
     </div>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=2"></script>
 </body>
 
 </html>

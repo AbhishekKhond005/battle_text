@@ -20,6 +20,10 @@
     padding: 0;
 }
 
+input[type="text"] {
+    text-transform: none !important;
+}
+
 body {
     font-family: var(--font-family);
     background-color: #FFF5C2;
@@ -343,6 +347,23 @@ body {
     box-shadow: none;
 }
 
+.level-btn.locked {
+    background: #ccc;
+    color: #666;
+    cursor: not-allowed;
+    box-shadow: 2px 2px 0 #999;
+}
+
+.level-btn.locked:hover {
+    transform: none;
+    box-shadow: 2px 2px 0 #999;
+    background: #ccc;
+}
+
+.level-btn.locked .level-desc {
+    color: #888;
+}
+
 .level-name {
     font-weight: 800;
     font-size: 1.1rem;
@@ -453,7 +474,6 @@ body {
     font-size: 1rem;
     font-weight: 800;
     margin-bottom: 5px;
-    text-transform: uppercase;
 }
 
 .hud-score {
@@ -547,6 +567,22 @@ body {
 .cpu .chat-bubble {
     background-color: var(--secondary-color);
     color: #fff;
+}
+
+.chat-bubble.golden-bubble {
+    background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%) !important;
+    border-color: #B8860B !important;
+    box-shadow: 4px 4px 0 #B8860B, 0 0 15px rgba(255, 215, 0, 0.5) !important;
+    animation: goldenGlow 1.5s ease-in-out infinite;
+}
+
+@keyframes goldenGlow {
+    0%, 100% {
+        box-shadow: 4px 4px 0 #B8860B, 0 0 10px rgba(255, 215, 0, 0.3);
+    }
+    50% {
+        box-shadow: 4px 4px 0 #B8860B, 0 0 20px rgba(255, 215, 0, 0.6);
+    }
 }
 
 .word-text {
@@ -770,7 +806,6 @@ body {
     text-align: center;
     font-weight: 800;
     font-size: 1.5rem;
-    text-transform: uppercase;
 }
 
 .score-box:nth-child(1) {
@@ -965,7 +1000,6 @@ body {
 .account-dropdown-username {
     font-weight: 800;
     font-size: 1.1rem;
-    text-transform: uppercase;
 }
 
 .account-dropdown-stats {
@@ -1126,7 +1160,7 @@ body {
     font-family: var(--font-family);
     font-size: 1.1rem;
     font-weight: 800;
-    text-transform: uppercase;
+    text-transform: none !important;
 }
 
 .setup-field input[type="text"]:focus {
@@ -1383,8 +1417,8 @@ body {
     font-family: var(--font-family);
     font-size: 1.1rem;
     font-weight: 800;
-    text-transform: uppercase;
     background: var(--bg-color);
+    text-transform: none !important;
 }
 
 .profile-username-row input:focus {
@@ -1453,6 +1487,55 @@ body {
     font-weight: 800;
     text-align: center;
     background: var(--accent-color);
+}
+
+.profile-stats-row {
+    display: flex;
+    gap: 15px;
+    width: 100%;
+}
+
+.profile-stat-box {
+    flex: 1;
+    text-align: center;
+}
+
+.profile-stat-box label {
+    display: block;
+    font-weight: 800;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    color: #666;
+}
+
+.profile-stat-value {
+    padding: 12px;
+    border: var(--brutal-border);
+    font-family: var(--font-family);
+    font-size: 1.5rem;
+    font-weight: 800;
+    text-align: center;
+    background: var(--accent-color);
+}
+
+.profile-stat-box:first-child .profile-stat-value {
+    background: var(--human-color);
+}
+
+.profile-stat-box:last-child .profile-stat-value {
+    background: var(--cpu-color);
+}
+
+.profile-unique-words {
+    padding: 15px;
+    border: var(--brutal-border);
+    font-family: var(--font-family);
+    font-size: 1.5rem;
+    font-weight: 800;
+    text-align: center;
+    background: #FFD700;
+    box-shadow: 4px 4px 0 var(--text-main);
 }
 
 .profile-error {

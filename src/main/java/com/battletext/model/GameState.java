@@ -7,6 +7,8 @@ import java.util.Set;
 @Data
 public class GameState {
     private String id;
+    private String botName;
+    private int levelIndex;
     private int difficultyLevel; // 1 to 8
     private int targetScore;
 

@@ -14,6 +14,7 @@ let userEmail = null;
 let userPicture = null;
 let needsSetup = false;
 let selectedIcon = 'robot';
+let guestUniqueWords = new Set(JSON.parse(localStorage.getItem('guestUniqueWords') || '[]'));
 
 // ============================================================
 // SCREEN REFERENCES
@@ -39,6 +40,8 @@ const profileUsernameEditBtn = document.getElementById('profile-username-edit-bt
 const profileUsernameSaveBtn = document.getElementById('profile-username-save-btn');
 const profileEmail = document.getElementById('profile-email');
 const profileGames = document.getElementById('profile-games');
+const profileWon = document.getElementById('profile-won');
+const profileUniqueWords = document.getElementById('profile-unique-words');
 const profileError = document.getElementById('profile-error');
 const profileSignoutBtn = document.getElementById('profile-signout-btn');
 const profileLinkBtn = document.getElementById('profile-link-btn');
@@ -145,10 +148,9 @@ async function checkAuth() {
             userEmail = data.email || null;
             userPicture = null;
 
-            // Check if we have a pending username from the new login flow
             const pendingUsername = localStorage.getItem('pending_username');
             if (pendingUsername) {
-                console.log('Automating setup with pending username:', pendingUsername);
+                console.log('New user setup with pending username:', pendingUsername);
                 await completeSetup(pendingUsername, 'robot');
                 localStorage.removeItem('pending_username');
                 return true;
@@ -161,7 +163,9 @@ async function checkAuth() {
         currentUser = {
             username: data.username,
             icon: data.icon,
-            gamesPlayed: data.gamesPlayed
+            gamesPlayed: data.gamesPlayed,
+            gamesWon: data.gamesWon || 0,
+            uniqueWordsCount: data.uniqueWordsCount || 0
         };
         userEmail = data.email || null;
         userPicture = data.picture || null;
@@ -194,7 +198,7 @@ function updateAccountUI() {
         dropdownIcon.textContent = iconEmoji;
         dropdownIcon.className = `account-icon ${iconClass}`;
         dropdownUsername.textContent = currentUser.username;
-        dropdownStats.textContent = `${currentUser.gamesPlayed} games played`;
+        dropdownStats.textContent = `${currentUser.gamesPlayed} played • ${currentUser.gamesWon || 0} won • ${currentUser.uniqueWordsCount || 0} words`;
 
         // Update in-game and game-over labels
         if (humanNameDisplay) humanNameDisplay.textContent = currentUser.username;
@@ -202,6 +206,7 @@ function updateAccountUI() {
     } else {
         if (humanNameDisplay) humanNameDisplay.textContent = 'YOU';
         if (finalHumanName) finalHumanName.textContent = 'YOU';
+        dropdownStats.textContent = `${guestUniqueWords.size} unique words (guest)`;
     }
 
     // Always show account button
@@ -299,8 +304,16 @@ function showProfileScreen() {
     // Display email
     profileEmail.textContent = userEmail || 'No email';
     
-    // Display games played
-    profileGames.textContent = currentUser.gamesPlayed;
+    // Display games played and won
+    profileGames.textContent = currentUser ? currentUser.gamesPlayed : '0';
+    profileWon.textContent = currentUser ? (currentUser.gamesWon || 0) : '0';
+    
+    // Display unique words
+    if (currentUser) {
+        profileUniqueWords.textContent = currentUser.uniqueWordsCount || 0;
+    } else {
+        profileUniqueWords.textContent = guestUniqueWords.size + ' (local)';
+    }
     
     showScreen(profileScreen);
 }
@@ -430,7 +443,9 @@ async function completeSetup(username, icon) {
         currentUser = {
             username: data.username,
             icon: data.icon,
-            gamesPlayed: data.gamesPlayed
+            gamesPlayed: data.gamesPlayed,
+            gamesWon: data.gamesWon || 0,
+            uniqueWordsCount: data.uniqueWordsCount || 0
         };
         needsSetup = false;
         updateAccountUI();
@@ -474,8 +489,13 @@ homeBtn.addEventListener('click', () => {
 async function loadBots() {
     try {
         const res = await fetch('/api/game/bots');
-        const botsMap = await res.json();
-        renderBotCards(botsMap);
+        const data = await res.json();
+        const botsMap = data.bots || data;
+        const unlockedLevels = {
+            'Adam': data.unlockedAdam || [0],
+            'Eve': data.unlockedEve || [0]
+        };
+        renderBotCards(botsMap, unlockedLevels);
         playBtn.disabled = false;
         playBtn.textContent = 'PLAY';
     } catch (e) {
@@ -484,7 +504,7 @@ async function loadBots() {
     }
 }
 
-function renderBotCards(botsMap) {
+function renderBotCards(botsMap, unlockedLevels = {'Adam': [0], 'Eve': [0]}) {
     botCardsEl.innerHTML = '';
     for (const [botName, bot] of Object.entries(botsMap)) {
         const card = document.createElement('div');
@@ -509,26 +529,37 @@ function renderBotCards(botsMap) {
         const levelsEl = document.createElement('div');
         levelsEl.className = 'bot-levels';
 
+        const unlocked = unlockedLevels[botName] || [0];
+
         bot.levels.forEach((level, idx) => {
             const btn = document.createElement('button');
             btn.className = 'level-btn';
             btn.dataset.bot = botName;
             btn.dataset.level = idx;
+            
+            const isLocked = !unlocked.includes(idx);
+            if (isLocked) {
+                btn.classList.add('locked');
+                btn.disabled = true;
+            }
 
+            const lockIcon = isLocked ? '🔒 ' : '';
             const gimmickLabel = level.gimmick
                 ? `<span class="level-gimmick-badge">✨ ${formatGimmick(level.gimmick)}</span>`
                 : '';
 
             btn.innerHTML = `
                 <div>
-                    <div class="level-name">Lv ${idx + 1} — ${level.name}</div>
+                    <div class="level-name">${lockIcon}Lv ${idx + 1} — ${level.name}</div>
                     <div class="level-desc">${level.description} &nbsp;·&nbsp; 🎯 ${level.targetScore} pts</div>
                 </div>
                 ${gimmickLabel}
             `;
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                selectLevel(botName, idx, btn);
+                if (!isLocked) {
+                    selectLevel(botName, idx, btn);
+                }
             });
             levelsEl.appendChild(btn);
         });
@@ -634,6 +665,19 @@ async function handleSubmitMove() {
     disableInput();
     errorMsg.textContent = '';
 
+    const lowerWord = word.toLowerCase().trim();
+    let isUniqueWord = false;
+    let uniqueWordBonus = 0;
+    
+    if (!currentUser) {
+        if (!guestUniqueWords.has(lowerWord)) {
+            isUniqueWord = true;
+            uniqueWordBonus = 5;
+            guestUniqueWords.add(lowerWord);
+            localStorage.setItem('guestUniqueWords', JSON.stringify([...guestUniqueWords]));
+        }
+    }
+
     try {
         const res = await fetch(
             `/api/game/playHuman?gameId=${gameState.id}&word=${encodeURIComponent(word)}`,
@@ -647,7 +691,13 @@ async function handleSubmitMove() {
             return;
         }
 
-        appendChatBubble('human', turnResult.humanWord, turnResult.humanWordScore);
+        if (!currentUser && isUniqueWord) {
+            turnResult.isUniqueWord = true;
+            turnResult.uniqueWordBonus = uniqueWordBonus;
+            turnResult.humanWordScore += uniqueWordBonus;
+        }
+
+        appendChatBubble('human', turnResult.humanWord, turnResult.humanWordScore, turnResult.isUniqueWord, turnResult.uniqueWordBonus);
         gameState = turnResult.gameState;
         wordInput.value = '';
         updateGameUI(gameState);
@@ -791,7 +841,7 @@ function updateGameUI(state) {
     }
 }
 
-function appendChatBubble(player, word, score) {
+function appendChatBubble(player, word, score, isUniqueWord = false, uniqueWordBonus = 0) {
     if (chatArea.querySelector('.chat-placeholder')) {
         chatArea.innerHTML = '';
     }
@@ -800,6 +850,10 @@ function appendChatBubble(player, word, score) {
 
     const bubble = document.createElement('div');
     bubble.className = 'chat-bubble';
+    
+    if (isUniqueWord && player === 'human') {
+        bubble.classList.add('golden-bubble');
+    }
 
     const wordSpan = document.createElement('span');
     wordSpan.className = 'word-text';
@@ -809,7 +863,12 @@ function appendChatBubble(player, word, score) {
 
     const scoreSpan = document.createElement('span');
     scoreSpan.className = 'word-score';
-    scoreSpan.textContent = `+${score}`;
+    
+    if (isUniqueWord && uniqueWordBonus > 0) {
+        scoreSpan.textContent = `+${score} (NEW! +${uniqueWordBonus})`;
+    } else {
+        scoreSpan.textContent = `+${score}`;
+    }
 
     if (player === 'human') {
         bubble.appendChild(wordSpan);
@@ -850,11 +909,14 @@ function handleGameOver() {
 
     // Increment games played
     if (currentUser) {
-        fetch('/api/auth/increment-games', { method: 'POST' })
+        const won = gameState.winner === 'HUMAN';
+        fetch(`/api/auth/increment-games?won=${won}`, { method: 'POST' })
             .then(res => res.json())
             .then(data => {
                 if (data.gamesPlayed !== undefined) {
                     currentUser.gamesPlayed = data.gamesPlayed;
+                    currentUser.gamesWon = data.gamesWon || 0;
+                    currentUser.uniqueWordsCount = data.uniqueWordsCount || currentUser.uniqueWordsCount;
                     updateAccountUI();
                 }
             })
