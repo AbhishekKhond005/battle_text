@@ -41,6 +41,7 @@ public class GameController {
         Map<String, BotConfig> bots = botRegistry.getBots();
         Set<Integer> unlockedAdam = Set.of(0);
         Set<Integer> unlockedEve = Set.of(0);
+        Set<Integer> unlockedLucifer = Set.of(0);
         
         if (principal != null) {
             String googleId = principal.getAttribute("sub");
@@ -52,12 +53,14 @@ public class GameController {
             );
             unlockedAdam = user.getUnlockedLevelIndices("Adam");
             unlockedEve = user.getUnlockedLevelIndices("Eve");
+            unlockedLucifer = user.getUnlockedLevelIndices("Lucifer");
         }
         
         return Map.of(
             "bots", bots,
             "unlockedAdam", unlockedAdam,
-            "unlockedEve", unlockedEve
+            "unlockedEve", unlockedEve,
+            "unlockedLucifer", unlockedLucifer
         );
     }
 

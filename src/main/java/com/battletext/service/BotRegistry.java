@@ -8,20 +8,12 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/**
- * Holds all registered bots and their levels.
- * To add a new bot: create a new BotConfig and put it into the registry.
- *
- * GIMMICK NOTE: FIXED_LETTER values must be lowercase (e.g. "FIXED_LETTER:g")
- * so they match the dictionary keys and lowercased user input.
- */
 @Component
 public class BotRegistry {
 
     private final Map<String, BotConfig> bots = new LinkedHashMap<>();
 
     public BotRegistry() {
-        // ---- ADAM (8 levels) ----
         bots.put("Adam", new BotConfig(
                 "Adam",
                 "🤖",
@@ -36,7 +28,6 @@ public class BotRegistry {
                         new BotLevel(6, "Veteran", "Decades of word battle experience.", 7, 80, null),
                         new BotLevel(7, "God Mode", "CPU earns double points — good luck!", 8, 100, "DOUBLE_SCORE"))));
 
-        // ---- EVE (5 levels) ----
         bots.put("Eve", new BotConfig(
                 "Eve",
                 "🤖",
@@ -47,6 +38,15 @@ public class BotRegistry {
                         new BotLevel(2, "Quick Q Hunt", "Every word must start with 'Q'!", 4, 30, "FIXED_LETTER:q"),
                         new BotLevel(3, "Sharp", "Strikes with precision.", 6, 60, null),
                         new BotLevel(4, "Ruthless", "CPU earns double points — good luck!", 8, 80, "DOUBLE_SCORE"))));
+
+        bots.put("Lucifer", new BotConfig(
+                "Lucifer",
+                "😈",
+                "The fallen one. Master of long, impossible words.",
+                Arrays.asList(
+                        new BotLevel(0, "Damned", "Even hell has rules.", 8, 70, "MIN_WORD_LENGTH:10"),
+                        new BotLevel(1, "Tormented", "Words that haunt your dreams.", 8, 80, "ENDS_WITH:qxyz"),
+                        new BotLevel(2, "The Devil", "Unforgivable. Good luck.", 8, 100, "MIN_WORD_LENGTH:12:ENDS_WITH:qxyz"))));
     }
 
     public Map<String, BotConfig> getBots() {

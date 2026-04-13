@@ -5,8 +5,16 @@ let gameState = null;
 let selectedBotName = null;
 let selectedLevelIndex = null;
 let timerInterval = null;
-let timeRemaining = 60.0;
-const TURN_DURATION = 60.0;
+let timeRemaining = 15.0;
+let currentTurnDuration = 15.0;
+
+function getTurnDuration() {
+    if (!gameState) return 15.0;
+    const d = gameState.difficultyLevel || 1;
+    if (d <= 3) return 15.0;
+    if (d <= 6) return 10.0;
+    return 5.0;
+}
 
 // Auth State
 let currentUser = null;
@@ -109,9 +117,15 @@ function showScreen(screenEl) {
     screenEl.classList.remove('hidden');
 }
 
-playBtn.addEventListener('click', () => showScreen(botScreen));
+playBtn.addEventListener('click', () => {
+    loadBots();
+    showScreen(botScreen);
+});
 backToHomeBtn.addEventListener('click', () => showScreen(homeScreen));
-restartBtn.addEventListener('click', () => showScreen(botScreen));
+restartBtn.addEventListener('click', () => {
+    showScreen(botScreen);
+    loadBots();
+});
 loginBackBtn.addEventListener('click', () => showScreen(homeScreen));
 profileBackBtn.addEventListener('click', () => {
     showScreen(homeScreen);
@@ -476,10 +490,11 @@ setupSubmitBtn.addEventListener('click', async () => {
 });
 
 // Quit — immediate, no dialog
-homeBtn.addEventListener('click', () => {
+homeBtn.addEventListener('click', async () => {
     clearInterval(timerInterval);
     gameState = null;
-    showScreen(botScreen); // Return to bot selection, not home
+    showScreen(botScreen);
+    loadBots();
 });
 
 // ============================================================
@@ -493,7 +508,8 @@ async function loadBots() {
         const botsMap = data.bots || data;
         const unlockedLevels = {
             'Adam': data.unlockedAdam || [0],
-            'Eve': data.unlockedEve || [0]
+            'Eve': data.unlockedEve || [0],
+            'Lucifer': data.unlockedLucifer || [0]
         };
         renderBotCards(botsMap, unlockedLevels);
         playBtn.disabled = false;
@@ -509,6 +525,9 @@ function renderBotCards(botsMap, unlockedLevels = {'Adam': [0], 'Eve': [0]}) {
     for (const [botName, bot] of Object.entries(botsMap)) {
         const card = document.createElement('div');
         card.className = 'bot-card';
+        if (botName === selectedBotName) {
+            card.classList.add('open');
+        }
         card.dataset.bot = botName;
 
         const header = document.createElement('div');
@@ -573,7 +592,14 @@ function renderBotCards(botsMap, unlockedLevels = {'Adam': [0], 'Eve': [0]}) {
 function formatGimmick(gimmick) {
     if (!gimmick) return '';
     if (gimmick.startsWith('FIXED_LETTER:')) return `Letter: ${gimmick.split(':')[1].toUpperCase()}`;
-    if (gimmick.startsWith('MIN_WORD_LENGTH:')) return `Min ${gimmick.split(':')[1]} letters`;
+    if (gimmick.startsWith('MIN_WORD_LENGTH:')) {
+        const parts = gimmick.split(':');
+        if (parts.length > 2) {
+            return `Min ${parts[1]} letters, Ends: ${parts[2].toUpperCase()}`;
+        }
+        return `Min ${gimmick.split(':')[1]} letters`;
+    }
+    if (gimmick.startsWith('ENDS_WITH:')) return `Ends: ${gimmick.split(':')[1].toUpperCase()}`;
     if (gimmick === 'DOUBLE_SCORE') return '2× CPU Score';
     return gimmick;
 }
@@ -687,9 +713,12 @@ async function handleSubmitMove() {
 
         if (!turnResult.valid) {
             errorMsg.textContent = turnResult.message;
-            enableInput();
+            enableInput(true); // true means resume timer
             return;
         }
+
+        timerBar.style.width = '100%';
+        timerBar.className = 'timer-bar';
 
         if (!currentUser && isUniqueWord) {
             turnResult.isUniqueWord = true;
@@ -754,10 +783,13 @@ async function simulateCpuTurn() {
 // TIMER
 // ============================================================
 
-function startTimer() {
-    timeRemaining = TURN_DURATION;
+function startTimer(resume = false) {
+    if (!resume) {
+        currentTurnDuration = getTurnDuration();
+        timeRemaining = currentTurnDuration;
+        timerBar.classList.remove('warning', 'danger');
+    }
     clearInterval(timerInterval);
-    timerBar.classList.remove('warning', 'danger');
 
     timerInterval = setInterval(() => {
         timeRemaining -= 0.1;
@@ -773,12 +805,10 @@ function startTimer() {
 
 function stopTimer() {
     clearInterval(timerInterval);
-    timerBar.style.width = '100%';
-    timerBar.style.backgroundColor = '#1a1a2e';
 }
 
 function updateTimerBar() {
-    const percent = Math.max(0, (timeRemaining / TURN_DURATION) * 100);
+    const percent = Math.max(0, (timeRemaining / currentTurnDuration) * 100);
     timerBar.style.width = `${percent}%`;
     if (percent < 50 && percent >= 25) {
         timerBar.className = 'timer-bar warning';
@@ -819,11 +849,11 @@ function disableInput() {
     submitBtn.disabled = true;
 }
 
-function enableInput() {
+function enableInput(resumeTimer = false) {
     wordInput.disabled = false;
     submitBtn.disabled = false;
     wordInput.focus();
-    startTimer();
+    startTimer(resumeTimer);
     requiredLetterEl.style.backgroundColor = '#fff';
     requiredLetterEl.style.color = '#1a1a2e';
 }

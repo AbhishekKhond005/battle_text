@@ -31,14 +31,9 @@ public class GameService {
 
     @PostConstruct
     public void init() {
-        // Load per-letter word files from /words/<letter>.txt
-        for (char c = 'a'; c <= 'z'; c++) {
-            String resourcePath = "/words/" + c + ".txt";
-            try (InputStream is = getClass().getResourceAsStream(resourcePath)) {
-                if (is == null) {
-                    // No file for this letter – skip silently
-                    continue;
-                }
+        String resourcePath = "/words_alpha.txt";
+        try (InputStream is = getClass().getResourceAsStream(resourcePath)) {
+            if (is != null) {
                 BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
                 String line;
                 while ((line = reader.readLine()) != null) {
@@ -48,10 +43,13 @@ public class GameService {
                         dictionary.computeIfAbsent(firstChar, k -> new ArrayList<>()).add(word);
                     }
                 }
-            } catch (Exception e) {
-                System.err.println("Failed to load words for letter " + c + ": " + e.getMessage());
+            } else {
+                System.err.println("Failed to load /words_alpha.txt");
             }
+        } catch (Exception e) {
+            System.err.println("Failed to load words: " + e.getMessage());
         }
+        
         // Sort each list by length descending for AI selection
         for (List<String> list : dictionary.values()) {
             list.sort(Comparator.comparingInt(String::length).reversed());
@@ -85,7 +83,11 @@ public class GameService {
     private int getMinWordLength(String gimmick) {
         if (gimmick != null && gimmick.startsWith("MIN_WORD_LENGTH:")) {
             try {
-                return Integer.parseInt(gimmick.substring("MIN_WORD_LENGTH:".length()));
+                String suffix = gimmick.substring("MIN_WORD_LENGTH:".length());
+                if (suffix.contains(":")) {
+                    suffix = suffix.split(":")[0];
+                }
+                return Integer.parseInt(suffix);
             } catch (NumberFormatException ignored) {
             }
         }
@@ -94,6 +96,17 @@ public class GameService {
 
     private boolean isDoubleScore(String gimmick) {
         return "DOUBLE_SCORE".equals(gimmick);
+    }
+
+    private String getEndsWithLetter(String gimmick) {
+        if (gimmick != null && gimmick.startsWith("ENDS_WITH:")) {
+            return gimmick.substring("ENDS_WITH:".length());
+        }
+        if (gimmick != null && gimmick.contains("ENDS_WITH:")) {
+            int idx = gimmick.indexOf("ENDS_WITH:");
+            return gimmick.substring(idx + "ENDS_WITH:".length());
+        }
+        return null;
     }
 
     // -------------------------------------------------------------------------
@@ -270,9 +283,22 @@ public class GameService {
 
         // Apply MIN_WORD_LENGTH gimmick filter
         int minLen = getMinWordLength(gimmick);
+        String endsWith = getEndsWithLetter(gimmick);
+        
         List<String> gimmickFiltered = available.stream()
                 .filter(w -> w.length() >= minLen)
                 .collect(Collectors.toList());
+        
+        if (endsWith != null && !endsWith.isEmpty()) {
+            final String ew = endsWith;
+            List<String> endFiltered = gimmickFiltered.stream()
+                    .filter(w -> ew.indexOf(w.charAt(w.length() - 1)) >= 0)
+                    .collect(Collectors.toList());
+            if (!endFiltered.isEmpty()) {
+                gimmickFiltered = endFiltered;
+            }
+        }
+        
         // Fallback to full available list if gimmick filter leaves nothing
         if (!gimmickFiltered.isEmpty()) {
             available = gimmickFiltered;

@@ -82,4 +82,8 @@ public class User {
     public boolean isLevelUnlocked(String botName, int levelIndex) {
         return getUnlockedLevelIndices(botName).contains(levelIndex);
     }
+
+    public Map<String, String> getUnlockedLevels() {
+        return unlockedLevels;
+    }
 }
