@@ -344,25 +344,25 @@ private void unlockNextLevel(GameState gameState, String userGoogleId) {
             return;
         }
         
-        // Determine Google ID to use – if none provided, fall back to "default"
-        String googleId = userGoogleId != null ? userGoogleId : "default";
+        String googleId = (userGoogleId != null && !userGoogleId.isEmpty()) ? userGoogleId : "default";
+        
         Optional<User> userOpt = userRepository.findByGoogleId(googleId);
         
-        // If user not found, create a minimal placeholder user
-        userOpt.ifPresent(user -> {
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
             user.unlockLevel(botName, nextLevel);
             userRepository.save(user);
-        });
-        if (!userOpt.isPresent()) {
-            User defaultUser = new User();
-            defaultUser.setGoogleId(googleId);
-            // Minimal setup for placeholder – in a real app these would be configured
-            defaultUser.setUsername("DefaultUser");
-            defaultUser.setEmail("");
-            defaultUser.setIcon("");
-            // Unlock the level for the placeholder user and persist
-            defaultUser.unlockLevel(botName, nextLevel);
-            userRepository.save(defaultUser);
+        } else {
+            User newUser = new User();
+            newUser.setGoogleId(googleId);
+            newUser.setUsername("Player");
+            newUser.setEmail("");
+            newUser.setIcon("");
+            newUser.getUnlockedLevels().put("Adam", "0");
+            newUser.getUnlockedLevels().put("Eve", "0");
+            newUser.getUnlockedLevels().put("Lucifer", "0");
+            newUser.unlockLevel(botName, nextLevel);
+            userRepository.save(newUser);
         }
     }
 }
