@@ -17,10 +17,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.Arrays;
 
 @RestController
 @RequestMapping("/api/game")
 public class GameController {
+
+    private static final String DICTIONARY_API_URL = "https://api.dictionaryapi.dev/api/v2/entries/en/";
 
     @Autowired
     private GameService gameService;
@@ -161,5 +164,69 @@ public class GameController {
             }
         }
         return gameState;
+    }
+
+    @GetMapping("/lookup")
+    public Map<String, Object> lookupWord(@RequestParam String word) {
+        Map<String, Object> result = new java.util.HashMap<>();
+        try {
+            String url = DICTIONARY_API_URL + word.trim().toLowerCase();
+            java.net.HttpURLConnection conn = (java.net.HttpURLConnection) new java.net.URL(url).openConnection();
+            conn.setRequestMethod("GET");
+            conn.setConnectTimeout(5000);
+            conn.setReadTimeout(5000);
+
+            if (conn.getResponseCode() == 200) {
+                java.io.BufferedReader reader = new java.io.BufferedReader(
+                    new java.io.InputStreamReader(conn.getInputStream(), java.nio.charset.StandardCharsets.UTF_8));
+                StringBuilder response = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    response.append(line);
+                }
+                reader.close();
+
+                String jsonStr = response.toString();
+                if (jsonStr.startsWith("[")) {
+                    jsonStr = jsonStr.substring(1, jsonStr.length() - 1);
+                }
+                com.fasterxml.jackson.databind.JsonNode root = new com.fasterxml.jackson.databind.ObjectMapper().readTree(jsonStr);
+                
+                String definition = "";
+                String partOfSpeech = "";
+                String phonetic = "";
+                
+                if (root.has("phonetic")) {
+                    phonetic = root.get("phonetic").asText();
+                }
+                if (root.has("meanings") && root.get("meanings").isArray()) {
+                    com.fasterxml.jackson.databind.JsonNode meanings = root.get("meanings").get(0);
+                    if (meanings != null) {
+                        if (meanings.has("partOfSpeech")) {
+                            partOfSpeech = meanings.get("partOfSpeech").asText();
+                        }
+                        if (meanings.has("definitions") && meanings.get("definitions").isArray()) {
+                            com.fasterxml.jackson.databind.JsonNode firstDef = meanings.get("definitions").get(0);
+                            if (firstDef != null && firstDef.has("definition")) {
+                                definition = firstDef.get("definition").asText();
+                            }
+                        }
+                    }
+                }
+                
+                result.put("word", word.toLowerCase());
+                result.put("definition", definition);
+                result.put("partOfSpeech", partOfSpeech);
+                result.put("phonetic", phonetic);
+                result.put("found", true);
+            } else {
+                result.put("found", false);
+                result.put("error", "Word not found");
+            }
+        } catch (Exception e) {
+            result.put("found", false);
+            result.put("error", "Error looking up word: " + e.getMessage());
+        }
+        return result;
     }
 }

@@ -1,7 +1,9 @@
 package com.battletext.model;
 
 import lombok.Data;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @Data
@@ -18,6 +20,7 @@ public class GameState {
 
     private String requiredStartingLetter;
     private Set<String> usedWords = new HashSet<>();
+    private List<String> botWords = new ArrayList<>();
 
     private String lastWordPlayed;
 
@@ -32,5 +35,13 @@ public class GameState {
 
     public boolean isWordUsed(String word) {
         return usedWords.contains(word);
+    }
+
+    public void addBotWord(String word) {
+        botWords.add(word);
+    }
+
+    public List<String> getBotWords() {
+        return botWords;
     }
 }

@@ -88,6 +88,17 @@ const finalCpuScore = document.getElementById('final-cpu-score');
 const finalCpuName = document.getElementById('final-cpu-name');
 const restartBtn = document.getElementById('restart-btn');
 const homeBtn = document.getElementById('home-btn');
+const reviewBtn = document.getElementById('review-btn');
+
+// Review Screen
+const reviewScreen = document.getElementById('review-screen');
+const reviewBackBtn = document.getElementById('review-back-btn');
+const reviewWordsEl = document.getElementById('review-words');
+const reviewDefinitionEl = document.getElementById('review-definition');
+const definitionWord = reviewDefinitionEl?.querySelector('.definition-word');
+const definitionPhonetic = reviewDefinitionEl?.querySelector('.definition-phonetic');
+const definitionPos = reviewDefinitionEl?.querySelector('.definition-pos');
+const definitionText = reviewDefinitionEl?.querySelector('.definition-text');
 
 // Account UI
 const accountBtn = document.getElementById('account-btn');
@@ -126,6 +137,70 @@ restartBtn.addEventListener('click', () => {
     showScreen(botScreen);
     loadBots();
 });
+homeBtn.addEventListener('click', async () => {
+    clearInterval(timerInterval);
+    gameState = null;
+    showScreen(botScreen);
+    loadBots();
+});
+
+reviewBackBtn.addEventListener('click', () => {
+    reviewDefinitionEl.classList.add('hidden');
+    showScreen(gameOverScreen);
+});
+
+reviewBtn.addEventListener('click', () => {
+    showReviewScreen();
+});
+
+async function showReviewScreen() {
+    showScreen(reviewScreen);
+    reviewWordsEl.innerHTML = '';
+    reviewDefinitionEl.classList.add('hidden');
+    
+    const botWords = gameState?.botWords || [];
+    
+    if (botWords.length === 0) {
+        reviewWordsEl.innerHTML = '<div class="review-instruction">No bot words in this match.</div>';
+        return;
+    }
+    
+    botWords.forEach(word => {
+        const btn = document.createElement('button');
+        btn.className = 'review-word-btn';
+        btn.textContent = word;
+        btn.addEventListener('click', () => lookupWordDefinition(word, btn));
+        reviewWordsEl.appendChild(btn);
+    });
+}
+
+async function lookupWordDefinition(word, btn) {
+    btn.classList.add('loading');
+    reviewDefinitionEl.classList.add('hidden');
+    
+    try {
+        const res = await fetch(`/api/game/lookup?word=${encodeURIComponent(word)}`);
+        const data = await res.json();
+        
+        if (data.found) {
+            definitionWord.textContent = data.word;
+            definitionPhonetic.textContent = data.phonetic || '';
+            definitionPos.textContent = data.partOfSpeech || '';
+            definitionText.textContent = data.definition || '';
+            reviewDefinitionEl.classList.remove('hidden');
+        } else {
+            definitionWord.textContent = word;
+            definitionPhonetic.textContent = '';
+            definitionPos.textContent = 'Not Found';
+            definitionText.textContent = data.error || 'Could not find definition';
+            reviewDefinitionEl.classList.remove('hidden');
+        }
+    } catch (e) {
+        console.error('Error looking up word:', e);
+    }
+    
+    btn.classList.remove('loading');
+}
 loginBackBtn.addEventListener('click', () => showScreen(homeScreen));
 profileBackBtn.addEventListener('click', () => {
     showScreen(homeScreen);
@@ -972,6 +1047,13 @@ function handleGameOver() {
     }
 
     setTimeout(() => showScreen(gameOverScreen), 1500);
+    
+    const botWords = gameState?.botWords || [];
+    if (botWords.length > 0) {
+        reviewBtn.classList.remove('hidden');
+    } else {
+        reviewBtn.classList.add('hidden');
+    }
 }
 
 // ============================================================

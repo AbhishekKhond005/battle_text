@@ -242,6 +242,25 @@
                 </div>
             </div>
             <button id="restart-btn" class="primary-btn">PLAY AGAIN</button>
+            <button id="review-btn" class="secondary-btn hidden">REVIEW MATCH</button>
+        </div>
+
+        <!-- ========== REVIEW SCREEN ========== -->
+        <div id="review-screen" class="screen hidden">
+            <div class="review-header">
+                <button class="nav-btn back-btn" id="review-back-btn">← Back</button>
+                <h2>Match Review</h2>
+            </div>
+            <div class="review-content">
+                <p class="review-instruction">Tap any bot word to see its definition:</p>
+                <div id="review-words" class="review-words"></div>
+                <div id="review-definition" class="review-definition hidden">
+                    <div class="definition-word"></div>
+                    <div class="definition-phonetic"></div>
+                    <div class="definition-pos"></div>
+                    <div class="definition-text"></div>
+                </div>
+            </div>
         </div>
 
     </div>

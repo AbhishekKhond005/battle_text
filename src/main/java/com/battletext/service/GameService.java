@@ -246,6 +246,7 @@ public class GameService {
 
             result.setCpuWord(cpuWord);
             result.setCpuWordScore(cpuScore);
+            gameState.addBotWord(cpuWord);
 
             if (gameState.getCpuScore() >= gameState.getTargetScore()) {
                 gameState.setGameOver(true);
