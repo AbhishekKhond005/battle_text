@@ -175,8 +175,11 @@ public class GameController {
             conn.setRequestMethod("GET");
             conn.setConnectTimeout(5000);
             conn.setReadTimeout(5000);
+            conn.setInstanceFollowRedirects(true);
 
-            if (conn.getResponseCode() == 200) {
+            int responseCode = conn.getResponseCode();
+            
+            if (responseCode == 200) {
                 java.io.BufferedReader reader = new java.io.BufferedReader(
                     new java.io.InputStreamReader(conn.getInputStream(), java.nio.charset.StandardCharsets.UTF_8));
                 StringBuilder response = new StringBuilder();
@@ -198,6 +201,14 @@ public class GameController {
                 
                 if (root.has("phonetic")) {
                     phonetic = root.get("phonetic").asText();
+                } else if (root.has("phonetics") && root.get("phonetics").isArray()) {
+                    var phonetics = root.get("phonetics");
+                    for (var p : phonetics) {
+                        if (p.has("text")) {
+                            phonetic = p.get("text").asText();
+                            break;
+                        }
+                    }
                 }
                 if (root.has("meanings") && root.get("meanings").isArray()) {
                     com.fasterxml.jackson.databind.JsonNode meanings = root.get("meanings").get(0);
@@ -225,7 +236,7 @@ public class GameController {
             }
         } catch (Exception e) {
             result.put("found", false);
-            result.put("error", "Error looking up word: " + e.getMessage());
+            result.put("error", "Error: " + e.getMessage());
         }
         return result;
     }

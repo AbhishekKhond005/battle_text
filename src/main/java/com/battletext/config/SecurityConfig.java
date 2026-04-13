@@ -21,7 +21,7 @@ public class SecurityConfig {
                                                         "/api/auth/user",
                                                         "/api/game/bots", "/api/game/start",
                                                         "/api/game/playCpu", "/api/game/playHuman",
-                                                        "/api/game/timeout", 
+                                                        "/api/game/timeout", "/api/game/lookup",
                                                         "/*.js", "/*.css", "/*.ico")
                                                 .permitAll()
                                                 .anyRequest().authenticated())
